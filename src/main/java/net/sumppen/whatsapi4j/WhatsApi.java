@@ -62,9 +62,9 @@ public class WhatsApi {
 	private final String WHATSAPP_REQUEST_HOST = "v.whatsapp.net/v2/code";      // The request code host.
 	private final String WHATSAPP_SERVER = "s.whatsapp.net";               // The hostname used to login/send messages.
 	private final String WHATSAPP_UPLOAD_HOST = "https://mms.whatsapp.net/client/iphone/upload.php"; // The upload host.
-	private final String WHATSAPP_DEVICE = "Android";                      // The device name.
-	private final String WHATSAPP_VER = "2.11.301";                // The WhatsApp version.
-	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.11.301 Android/4.3 Device/GalaxyS3";// User agent used in request/registration code.
+	private final String WHATSAPP_DEVICE = "Nokia302";                      // The device name.
+	private final String WHATSAPP_VER = "2.12.61";                // The WhatsApp version.
+	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.12.61 S40Version/14.26 Device/Nokia302";// User agent used in request/registration code.
 
 
 	private final Logger log = Logger.getLogger(WhatsApi.class);
@@ -211,21 +211,40 @@ public class WhatsApi {
 		if ((phone = dissectPhone()) == null) {
 			throw new WhatsAppException("The prived phone number is not valid.");
 		}
+		String countryCode = null;
+		String langCode = null;
+		if(countryCode == null) {
+			if(phone.get("ISO3166") != null) {
+				countryCode = phone.get("ISO3166");
+			} else {
+				countryCode = "US";
+			}
+		}
+		if(langCode == null) {
+			if(phone.get("ISO639") != null) {
+				langCode = phone.get("ISO639");
+			} else {
+				langCode = "en";
+			}
+		}
+
 		// Build the url.
 		String host = "https://"+WHATSAPP_REGISTER_HOST;
 		Map<String,String> query = new LinkedHashMap<String, String>();
 		query.put("cc",phone.get("cc")); 
 		query.put("in",phone.get("phone")); 
+		query.put("lg",langCode); 
+		query.put("lc", countryCode);
 		query.put("id",(identity==null?"":identity));
 		query.put("code", code);
-		query.put("c", "cookie");
+//		query.put("c", "cookie");
 
 		JSONObject response = getResponse(host, query);
 		if(log.isDebugEnabled()) {
 			log.debug(response.toString(1));
 		}
 		if (!response.getString("status").equals("ok")) {
-			eventManager().fireCodeRegisterFailed(phoneNumber, response.getString("status"), response.getString("reason"), response.getString("retry_after"));
+			eventManager().fireCodeRegisterFailed(phoneNumber, response.getString("status"), response.getString("reason"), "");//response.getString("retry_after"));
 			throw new WhatsAppException("An error occurred registering the registration code from WhatsApp.");
 		} else {
 			eventManager().fireCodeRegister(phoneNumber, response.getString("login"), response.getString("pw"), response.getString("type"), response.getString("expiration"), 
@@ -296,12 +315,14 @@ public class WhatsApi {
 		Map<String,String> query = new LinkedHashMap<String, String>();
 		query.put("cc",phone.get("cc")); 
 		query.put("in",phone.get("phone")); 
-		query.put("to",phoneNumber); 
+//		query.put("to",phoneNumber); 
 		query.put("lg",langCode); 
 		query.put("lc", countryCode);
 		query.put("method", method);
-		query.put("mcc",phone.get("mcc"));
-		query.put("mnc","001");
+//		query.put("mcc",phone.get("mcc"));
+//		query.put("mnc","001");
+		query.put("sim_mcc",phone.get("mcc"));
+		query.put("sim_mnc","000");
 		query.put("token", URLEncoder.encode(token,"iso-8859-1"));
 		query.put("id",(identity==null?"":identity));
 
@@ -330,27 +351,29 @@ public class WhatsApi {
 	}
 
 	protected String generateRequestToken(String country, String phone) throws IOException, NoSuchAlgorithmException {
-		String signature = "MIIDMjCCAvCgAwIBAgIETCU2pDALBgcqhkjOOAQDBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFDASBgNVBAcTC1NhbnRhIENsYXJhMRYwFAYDVQQKEw1XaGF0c0FwcCBJbmMuMRQwEgYDVQQLEwtFbmdpbmVlcmluZzEUMBIGA1UEAxMLQnJpYW4gQWN0b24wHhcNMTAwNjI1MjMwNzE2WhcNNDQwMjE1MjMwNzE2WjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEUMBIGA1UEBxMLU2FudGEgQ2xhcmExFjAUBgNVBAoTDVdoYXRzQXBwIEluYy4xFDASBgNVBAsTC0VuZ2luZWVyaW5nMRQwEgYDVQQDEwtCcmlhbiBBY3RvbjCCAbgwggEsBgcqhkjOOAQBMIIBHwKBgQD9f1OBHXUSKVLfSpwu7OTn9hG3UjzvRADDHj+AtlEmaUVdQCJR+1k9jVj6v8X1ujD2y5tVbNeBO4AdNG/yZmC3a5lQpaSfn+gEexAiwk+7qdf+t8Yb+DtX58aophUPBPuD9tPFHsMCNVQTWhaRMvZ1864rYdcq7/IiAxmd0UgBxwIVAJdgUI8VIwvMspK5gqLrhAvwWBz1AoGBAPfhoIXWmz3ey7yrXDa4V7l5lK+7+jrqgvlXTAs9B4JnUVlXjrrUWU/mcQcQgYC0SRZxI+hMKBYTt88JMozIpuE8FnqLVHyNKOCjrh4rs6Z1kW6jfwv6ITVi8ftiegEkO8yk8b6oUZCJqIPf4VrlnwaSi2ZegHtVJWQBTDv+z0kqA4GFAAKBgQDRGYtLgWh7zyRtQainJfCpiaUbzjJuhMgo4fVWZIvXHaSHBU1t5w//S0lDK2hiqkj8KpMWGywVov9eZxZy37V26dEqr/c2m5qZ0E+ynSu7sqUD7kGx/zeIcGT0H+KAVgkGNQCo5Uc0koLRWYHNtYoIvt5R3X6YZylbPftF/8ayWTALBgcqhkjOOAQDBQADLwAwLAIUAKYCp0d6z4QQdyN74JDfQ2WCyi8CFDUM4CaNB+ceVXdKtOrNTQcc0e+t";
-		String classesMd5 = "pZ3J/O+F3HXOyx8YixzvPQ==";
-
-		byte[] key2 = base64_decode("/UIGKU1FVQa+ATM2A0za7G2KI9S/CwPYjgAbc67v7ep42eO/WeTLx1lb1cHwxpsEgF4+PmYpLd2YpGUdX/A2JQitsHzDwgcdBpUf7psX1BU=");
-		ByteArrayOutputStream data = new ByteArrayOutputStream();
-		data.write(base64_decode(signature));
-		data.write(base64_decode(classesMd5));
-		data.write(phone.getBytes());
-
-		ByteArrayOutputStream opad = new ByteArrayOutputStream();
-		ByteArrayOutputStream ipad = new ByteArrayOutputStream();
-		for(int i = 0; i < 64; ++i) {
-			opad.write(0x5c ^ key2[i]);
-			ipad.write(0x36 ^ key2[i]);
-		}
-		ipad.write(data.toByteArray());
-		opad.write(hash("SHA-1", ipad.toByteArray()));
-
-		byte[] output = hash("SHA-1", opad.toByteArray());
-
-		return base64_encode(output);	}
+//		String signature = "MIIDMjCCAvCgAwIBAgIETCU2pDALBgcqhkjOOAQDBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFDASBgNVBAcTC1NhbnRhIENsYXJhMRYwFAYDVQQKEw1XaGF0c0FwcCBJbmMuMRQwEgYDVQQLEwtFbmdpbmVlcmluZzEUMBIGA1UEAxMLQnJpYW4gQWN0b24wHhcNMTAwNjI1MjMwNzE2WhcNNDQwMjE1MjMwNzE2WjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEUMBIGA1UEBxMLU2FudGEgQ2xhcmExFjAUBgNVBAoTDVdoYXRzQXBwIEluYy4xFDASBgNVBAsTC0VuZ2luZWVyaW5nMRQwEgYDVQQDEwtCcmlhbiBBY3RvbjCCAbgwggEsBgcqhkjOOAQBMIIBHwKBgQD9f1OBHXUSKVLfSpwu7OTn9hG3UjzvRADDHj+AtlEmaUVdQCJR+1k9jVj6v8X1ujD2y5tVbNeBO4AdNG/yZmC3a5lQpaSfn+gEexAiwk+7qdf+t8Yb+DtX58aophUPBPuD9tPFHsMCNVQTWhaRMvZ1864rYdcq7/IiAxmd0UgBxwIVAJdgUI8VIwvMspK5gqLrhAvwWBz1AoGBAPfhoIXWmz3ey7yrXDa4V7l5lK+7+jrqgvlXTAs9B4JnUVlXjrrUWU/mcQcQgYC0SRZxI+hMKBYTt88JMozIpuE8FnqLVHyNKOCjrh4rs6Z1kW6jfwv6ITVi8ftiegEkO8yk8b6oUZCJqIPf4VrlnwaSi2ZegHtVJWQBTDv+z0kqA4GFAAKBgQDRGYtLgWh7zyRtQainJfCpiaUbzjJuhMgo4fVWZIvXHaSHBU1t5w//S0lDK2hiqkj8KpMWGywVov9eZxZy37V26dEqr/c2m5qZ0E+ynSu7sqUD7kGx/zeIcGT0H+KAVgkGNQCo5Uc0koLRWYHNtYoIvt5R3X6YZylbPftF/8ayWTALBgcqhkjOOAQDBQADLwAwLAIUAKYCp0d6z4QQdyN74JDfQ2WCyi8CFDUM4CaNB+ceVXdKtOrNTQcc0e+t";
+//		String classesMd5 = "pZ3J/O+F3HXOyx8YixzvPQ==";
+//
+//		byte[] key2 = base64_decode("/UIGKU1FVQa+ATM2A0za7G2KI9S/CwPYjgAbc67v7ep42eO/WeTLx1lb1cHwxpsEgF4+PmYpLd2YpGUdX/A2JQitsHzDwgcdBpUf7psX1BU=");
+//		ByteArrayOutputStream data = new ByteArrayOutputStream();
+//		data.write(base64_decode(signature));
+//		data.write(base64_decode(classesMd5));
+//		data.write(phone.getBytes());
+//
+//		ByteArrayOutputStream opad = new ByteArrayOutputStream();
+//		ByteArrayOutputStream ipad = new ByteArrayOutputStream();
+//		for(int i = 0; i < 64; ++i) {
+//			opad.write(0x5c ^ key2[i]);
+//			ipad.write(0x36 ^ key2[i]);
+//		}
+//		ipad.write(data.toByteArray());
+//		opad.write(hash("SHA-1", ipad.toByteArray()));
+//
+//		byte[] output = hash("SHA-1", opad.toByteArray());
+//
+//		return base64_encode(output);	
+		return WhatsMediaUploader.md5("PdA2DJyKoUrwLw1Bg6EIhzh502dF9noR9uFCllGk1419900749520"+phone);
+	}
 
 	private byte[] hash(String algo, byte[] dataBytes) throws NoSuchAlgorithmException {
 		MessageDigest md;
@@ -1180,7 +1203,7 @@ public class WhatsApi {
 	 */
 	public void sendStatusUpdate(String txt) throws WhatsAppException {
 		//TODO implement this
-		throw new WhatsAppException("Not yet implemented");
+		
 	}
 
 	/**

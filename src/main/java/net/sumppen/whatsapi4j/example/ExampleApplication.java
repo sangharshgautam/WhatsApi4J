@@ -21,7 +21,7 @@ import net.sumppen.whatsapi4j.WhatsAppException;
 public class ExampleApplication {
 
 	private enum WhatsAppCommand {
-		send,request,register
+		send,request,register,status
 	}
 
 	public static void main(String[] args) {
@@ -87,6 +87,13 @@ public class ExampleApplication {
 							System.out.println("Not logged in!");
 						}
 						break;
+					case status:
+						if(loggedIn) {
+							setStatus(cons,wa);
+						} else {
+							System.out.println("Not logged in!");
+						}
+						break;
 					case request:
 						if(!loggedIn) {
 							sendRequest(wa);
@@ -123,6 +130,16 @@ public class ExampleApplication {
 			}
 			System.exit(1);
 		}
+	}
+
+	private static void setStatus(Console cons, WhatsApi wa) throws WhatsAppException {
+		System.out.print("Status: ");
+		String status = cons.readLine();
+		if(status == null || status.length() == 0) {
+			return;
+		}
+		wa.sendStatusUpdate(status);
+		System.out.println("Ok");
 	}
 
 	private static void sendRegister(Console cons, WhatsApi wa) throws JSONException, WhatsAppException {

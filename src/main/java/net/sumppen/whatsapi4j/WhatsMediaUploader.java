@@ -184,7 +184,7 @@ public class WhatsMediaUploader {
 		return contentType;
 	}
 
-	private static String md5(String filepath) throws NoSuchAlgorithmException {
+	static String md5(String filepath) throws NoSuchAlgorithmException {
 		MessageDigest md5 = MessageDigest.getInstance("MD5");
 		byte[] digest = md5.digest(filepath.getBytes());
         StringBuilder sb = new StringBuilder();

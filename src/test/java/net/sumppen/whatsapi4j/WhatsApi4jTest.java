@@ -55,7 +55,8 @@ public class WhatsApi4jTest {
 	public void testGenerateRequestToken() throws Exception {
         WhatsApi whatsapi = new WhatsApi("12345678", "", "test");
         String token = whatsapi.generateRequestToken("Finland", "401122333");
-        assertEquals("vMg5esCVsZdT2auKeWtoYLWEcCY=", token);
+//        assertEquals("vMg5esCVsZdT2auKeWtoYLWEcCY=", token);
+        assertEquals("c18f993c24121c83e84aafb8a687117e", token);
 	}
 
 	@Test
