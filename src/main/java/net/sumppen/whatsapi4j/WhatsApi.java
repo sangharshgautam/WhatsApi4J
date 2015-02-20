@@ -22,6 +22,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -62,8 +63,8 @@ public class WhatsApi {
 	private final String WHATSAPP_REQUEST_HOST = "v.whatsapp.net/v2/code";      // The request code host.
 	private final String WHATSAPP_SERVER = "s.whatsapp.net";               // The hostname used to login/send messages.
 	private final String WHATSAPP_UPLOAD_HOST = "https://mms.whatsapp.net/client/iphone/upload.php"; // The upload host.
-	private final String WHATSAPP_DEVICE = "Nokia302";                      // The device name.
-	private final String WHATSAPP_VER = "2.12.61";                // The WhatsApp version.
+	private final String WHATSAPP_DEVICE = "iPhone";                      // The device name.
+	private final String WHATSAPP_VER = "2.11.14";                // The WhatsApp version.
 	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.12.61 S40Version/14.26 Device/Nokia302";// User agent used in request/registration code.
 
 
@@ -74,70 +75,7 @@ public class WhatsApi {
 	private LoginStatus loginStatus;
 	private Socket socket;
 	private String password;
-	private String[] dictionary = {
-			null,null,null,null,
-			null,"account","ack","action",
-			"active","add","after","ib",
-			"all","allow","apple","audio","auth",
-			"author","available","bad-protocol",
-			"bad-request","before","Bell.caf",
-			"body","Boing.caf","cancel","category","challenge",
-			"chat","clean","code","composing","config",
-			"conflict","contacts","count","create",
-			"creation","default","delay","delete",
-			"delivered","deny","digest","DIGEST-MD5-1",
-			"DIGEST-MD5-2","dirty","elapsed","broadcast",
-			"enable","encoding","duplicate","error",
-			"event","expiration","expired","fail",
-			"failure","false","favorites","feature",
-			"features","field","first","free",
-			"from","g.us","get","Glass.caf",
-			"google","group","groups","g_notify",
-			"g_sound","Harp.caf","http://etherx.jabber.org/streams","http://jabber.org/protocol/chatstates",
-			"id","image","img","inactive",
-			"index","internal-server-error","invalid-mechanism","ip",
-			"iq","item","item-not-found","user-not-found",
-			"jabber:iq:last","jabber:iq:privacy","jabber:x:delay","jabber:x:event",
-			"jid","jid-malformed","kind","last",
-			"latitude","lc","leave","leave-all",
-			"lg","list","location","longitude",
-			"max","max_groups","max_participants","max_subject",
-			"mechanism","media","message","message_acks",
-			"method","microsoft","missing","modify",
-			"mute","name","nokia","none",
-			"not-acceptable","not-allowed","not-authorized","notification",
-			"notify","off","offline","order",
-			"owner","owning","paid","participant",
-			"participants","participating","password","paused",
-			"picture","pin","ping","platform",
-			"pop_mean_time","pop_plus_minus","port","presence",
-			"preview","probe","proceed","prop",
-			"props","p_o","p_t","query",
-			"raw","reason","receipt","receipt_acks",
-			"received","registration","relay","remote-server-timeout",
-			"remove","Replaced by new connection","request","required",
-			"resource","resource-constraint","response","result",
-			"retry","rim","s.whatsapp.net","s.us",
-			"seconds","server","server-error","service-unavailable",
-			"set","show","sid","silent",
-			"sound","stamp","unsubscribe","stat",
-			"status","stream:error","stream:features","subject",
-			"subscribe","success","sync","system-shutdown",
-			"s_o","s_t","t","text",
-			"timeout","TimePassing.caf","timestamp","to",
-			"Tri-tone.caf","true","type","unavailable",
-			"uri","url","urn:ietf:params:xml:ns:xmpp-sasl","urn:ietf:params:xml:ns:xmpp-stanzas",
-			"urn:ietf:params:xml:ns:xmpp-streams","urn:xmpp:delay","urn:xmpp:ping","urn:xmpp:receipts",
-			"urn:xmpp:whatsapp","urn:xmpp:whatsapp:account","urn:xmpp:whatsapp:dirty","urn:xmpp:whatsapp:mms",
-			"urn:xmpp:whatsapp:push","user","username","value",
-			"vcard","version","video","w",
-			"w:g","w:p","w:p:r","w:profile:picture",
-			"wait","x","xml-not-well-formed","xmlns",
-			"xmlns:stream","Xylophone.caf","1","WAUTH-1",
-			null,null,null,null,
-			null,null,null,null,
-			null,null,null,"XXX"
-	};
+
 	private BinTreeNodeWriter writer;
 	private byte[] challengeData;
 	private BinTreeNodeReader reader;
@@ -155,10 +93,11 @@ public class WhatsApi {
 	private JSONObject mediaInfo;
 	private MessageProcessor processor = null;
 	private Lock pollLock = new ReentrantLock();
+	private MessagePoller poller;
 
 	public WhatsApi(String username, String identity, String nickname) throws NoSuchAlgorithmException, WhatsAppException {
-		writer = new BinTreeNodeWriter(dictionary);
-		reader = new BinTreeNodeReader(dictionary);
+		writer = new BinTreeNodeWriter();
+		reader = new BinTreeNodeReader();
 		this.name = nickname;
 		this.phoneNumber = username;
 		try {
@@ -237,7 +176,7 @@ public class WhatsApi {
 		query.put("lc", countryCode);
 		query.put("id",(identity==null?"":identity));
 		query.put("code", code);
-//		query.put("c", "cookie");
+		//		query.put("c", "cookie");
 
 		JSONObject response = getResponse(host, query);
 		if(log.isDebugEnabled()) {
@@ -315,12 +254,12 @@ public class WhatsApi {
 		Map<String,String> query = new LinkedHashMap<String, String>();
 		query.put("cc",phone.get("cc")); 
 		query.put("in",phone.get("phone")); 
-//		query.put("to",phoneNumber); 
+		//		query.put("to",phoneNumber); 
 		query.put("lg",langCode); 
 		query.put("lc", countryCode);
 		query.put("method", method);
-//		query.put("mcc",phone.get("mcc"));
-//		query.put("mnc","001");
+		//		query.put("mcc",phone.get("mcc"));
+		//		query.put("mnc","001");
 		query.put("sim_mcc",phone.get("mcc"));
 		query.put("sim_mnc","000");
 		query.put("token", URLEncoder.encode(token,"iso-8859-1"));
@@ -351,27 +290,27 @@ public class WhatsApi {
 	}
 
 	protected String generateRequestToken(String country, String phone) throws IOException, NoSuchAlgorithmException {
-//		String signature = "MIIDMjCCAvCgAwIBAgIETCU2pDALBgcqhkjOOAQDBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFDASBgNVBAcTC1NhbnRhIENsYXJhMRYwFAYDVQQKEw1XaGF0c0FwcCBJbmMuMRQwEgYDVQQLEwtFbmdpbmVlcmluZzEUMBIGA1UEAxMLQnJpYW4gQWN0b24wHhcNMTAwNjI1MjMwNzE2WhcNNDQwMjE1MjMwNzE2WjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEUMBIGA1UEBxMLU2FudGEgQ2xhcmExFjAUBgNVBAoTDVdoYXRzQXBwIEluYy4xFDASBgNVBAsTC0VuZ2luZWVyaW5nMRQwEgYDVQQDEwtCcmlhbiBBY3RvbjCCAbgwggEsBgcqhkjOOAQBMIIBHwKBgQD9f1OBHXUSKVLfSpwu7OTn9hG3UjzvRADDHj+AtlEmaUVdQCJR+1k9jVj6v8X1ujD2y5tVbNeBO4AdNG/yZmC3a5lQpaSfn+gEexAiwk+7qdf+t8Yb+DtX58aophUPBPuD9tPFHsMCNVQTWhaRMvZ1864rYdcq7/IiAxmd0UgBxwIVAJdgUI8VIwvMspK5gqLrhAvwWBz1AoGBAPfhoIXWmz3ey7yrXDa4V7l5lK+7+jrqgvlXTAs9B4JnUVlXjrrUWU/mcQcQgYC0SRZxI+hMKBYTt88JMozIpuE8FnqLVHyNKOCjrh4rs6Z1kW6jfwv6ITVi8ftiegEkO8yk8b6oUZCJqIPf4VrlnwaSi2ZegHtVJWQBTDv+z0kqA4GFAAKBgQDRGYtLgWh7zyRtQainJfCpiaUbzjJuhMgo4fVWZIvXHaSHBU1t5w//S0lDK2hiqkj8KpMWGywVov9eZxZy37V26dEqr/c2m5qZ0E+ynSu7sqUD7kGx/zeIcGT0H+KAVgkGNQCo5Uc0koLRWYHNtYoIvt5R3X6YZylbPftF/8ayWTALBgcqhkjOOAQDBQADLwAwLAIUAKYCp0d6z4QQdyN74JDfQ2WCyi8CFDUM4CaNB+ceVXdKtOrNTQcc0e+t";
-//		String classesMd5 = "pZ3J/O+F3HXOyx8YixzvPQ==";
-//
-//		byte[] key2 = base64_decode("/UIGKU1FVQa+ATM2A0za7G2KI9S/CwPYjgAbc67v7ep42eO/WeTLx1lb1cHwxpsEgF4+PmYpLd2YpGUdX/A2JQitsHzDwgcdBpUf7psX1BU=");
-//		ByteArrayOutputStream data = new ByteArrayOutputStream();
-//		data.write(base64_decode(signature));
-//		data.write(base64_decode(classesMd5));
-//		data.write(phone.getBytes());
-//
-//		ByteArrayOutputStream opad = new ByteArrayOutputStream();
-//		ByteArrayOutputStream ipad = new ByteArrayOutputStream();
-//		for(int i = 0; i < 64; ++i) {
-//			opad.write(0x5c ^ key2[i]);
-//			ipad.write(0x36 ^ key2[i]);
-//		}
-//		ipad.write(data.toByteArray());
-//		opad.write(hash("SHA-1", ipad.toByteArray()));
-//
-//		byte[] output = hash("SHA-1", opad.toByteArray());
-//
-//		return base64_encode(output);	
+		//		String signature = "MIIDMjCCAvCgAwIBAgIETCU2pDALBgcqhkjOOAQDBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFDASBgNVBAcTC1NhbnRhIENsYXJhMRYwFAYDVQQKEw1XaGF0c0FwcCBJbmMuMRQwEgYDVQQLEwtFbmdpbmVlcmluZzEUMBIGA1UEAxMLQnJpYW4gQWN0b24wHhcNMTAwNjI1MjMwNzE2WhcNNDQwMjE1MjMwNzE2WjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEUMBIGA1UEBxMLU2FudGEgQ2xhcmExFjAUBgNVBAoTDVdoYXRzQXBwIEluYy4xFDASBgNVBAsTC0VuZ2luZWVyaW5nMRQwEgYDVQQDEwtCcmlhbiBBY3RvbjCCAbgwggEsBgcqhkjOOAQBMIIBHwKBgQD9f1OBHXUSKVLfSpwu7OTn9hG3UjzvRADDHj+AtlEmaUVdQCJR+1k9jVj6v8X1ujD2y5tVbNeBO4AdNG/yZmC3a5lQpaSfn+gEexAiwk+7qdf+t8Yb+DtX58aophUPBPuD9tPFHsMCNVQTWhaRMvZ1864rYdcq7/IiAxmd0UgBxwIVAJdgUI8VIwvMspK5gqLrhAvwWBz1AoGBAPfhoIXWmz3ey7yrXDa4V7l5lK+7+jrqgvlXTAs9B4JnUVlXjrrUWU/mcQcQgYC0SRZxI+hMKBYTt88JMozIpuE8FnqLVHyNKOCjrh4rs6Z1kW6jfwv6ITVi8ftiegEkO8yk8b6oUZCJqIPf4VrlnwaSi2ZegHtVJWQBTDv+z0kqA4GFAAKBgQDRGYtLgWh7zyRtQainJfCpiaUbzjJuhMgo4fVWZIvXHaSHBU1t5w//S0lDK2hiqkj8KpMWGywVov9eZxZy37V26dEqr/c2m5qZ0E+ynSu7sqUD7kGx/zeIcGT0H+KAVgkGNQCo5Uc0koLRWYHNtYoIvt5R3X6YZylbPftF/8ayWTALBgcqhkjOOAQDBQADLwAwLAIUAKYCp0d6z4QQdyN74JDfQ2WCyi8CFDUM4CaNB+ceVXdKtOrNTQcc0e+t";
+		//		String classesMd5 = "pZ3J/O+F3HXOyx8YixzvPQ==";
+		//
+		//		byte[] key2 = base64_decode("/UIGKU1FVQa+ATM2A0za7G2KI9S/CwPYjgAbc67v7ep42eO/WeTLx1lb1cHwxpsEgF4+PmYpLd2YpGUdX/A2JQitsHzDwgcdBpUf7psX1BU=");
+		//		ByteArrayOutputStream data = new ByteArrayOutputStream();
+		//		data.write(base64_decode(signature));
+		//		data.write(base64_decode(classesMd5));
+		//		data.write(phone.getBytes());
+		//
+		//		ByteArrayOutputStream opad = new ByteArrayOutputStream();
+		//		ByteArrayOutputStream ipad = new ByteArrayOutputStream();
+		//		for(int i = 0; i < 64; ++i) {
+		//			opad.write(0x5c ^ key2[i]);
+		//			ipad.write(0x36 ^ key2[i]);
+		//		}
+		//		ipad.write(data.toByteArray());
+		//		opad.write(hash("SHA-1", ipad.toByteArray()));
+		//
+		//		byte[] output = hash("SHA-1", opad.toByteArray());
+		//
+		//		return base64_encode(output);	
 		return WhatsMediaUploader.md5("PdA2DJyKoUrwLw1Bg6EIhzh502dF9noR9uFCllGk1419900749520"+phone);
 	}
 
@@ -403,17 +342,19 @@ public class WhatsApi {
 	 * Disconnect from the WhatsApp network.
 	 */
 	public void disconnect() {
+		poller.setRunning(false);
 		if (socket != null && socket.isConnected()) {
 			try {
 				socket.close();
 			} catch (IOException e) {
 				log.error("Exception while disconnecting",e);
 			}
-			eventManager().fireDisconnect(
-					phoneNumber,
-					socket
-					);
-		}	}
+		}	
+		eventManager().fireDisconnect(
+				phoneNumber,
+				socket
+				);
+	}
 
 	/**
 	 * Drain the message queue for application processing.
@@ -819,9 +760,11 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 * @throws JSONException 
 	 * @throws NoSuchAlgorithmException 
+	 * @throws DecodeException 
+	 * @throws InvalidKeyException 
 	 */
 	private JSONObject sendCheckAndSendMedia(File file, int maxSize, String to,
-			String type, List<String> allowedExtensions, boolean storeURLmedia) throws WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, JSONException, NoSuchAlgorithmException {
+			String type, List<String> allowedExtensions, boolean storeURLmedia) throws WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		if(file.length() <= maxSize && file.isFile() && file.length() > 0) {
 			String fileName = file.getName();
 			int lastIndexOf = fileName.lastIndexOf('.')+1;
@@ -845,7 +788,7 @@ public class WhatsApi {
 	}
 
 	private void sendRequestFileUpload(String b64hash, String type, File file,
-			String to) throws WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, JSONException, NoSuchAlgorithmException {
+			String to) throws WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		mediaFile = file;
 		Map<String,String> hash = new HashMap<String, String>();
 		hash.put("xmlns", "w:m");
@@ -1203,7 +1146,7 @@ public class WhatsApi {
 	 */
 	public void sendStatusUpdate(String txt) throws WhatsAppException {
 		//TODO implement this
-		
+
 	}
 
 	/**
@@ -1392,7 +1335,7 @@ public class WhatsApi {
 		return false;
 	}
 
-	private void doLogin() throws IOException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException, WhatsAppException, JSONException {
+	private void doLogin() throws InvalidKeyException, NoSuchAlgorithmException, IOException, InvalidKeySpecException, WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, JSONException, EncodeException, DecodeException {
 		writer.resetKey();
 		reader.resetKey();
 		String resource = WHATSAPP_DEVICE + "-" + WHATSAPP_VER + "-" + PORT;
@@ -1412,21 +1355,27 @@ public class WhatsApi {
 			writer.setKey(outputKey);
 		}
 		int cnt = 0;
+		poller = new MessagePoller(this);
+		poller.start();
 		do {
-			processInboundData(readData());
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				throw new WhatsAppException(e);
+			}
 		} while ((cnt++ < 100) && (loginStatus == LoginStatus.DISCONNECTED_STATUS));
 		sendPresence("available");
 	}
 
 	private void sendPresence(String type) throws IOException, WhatsAppException {
 		Map<String, String> presence = new LinkedHashMap<String, String>();
-		presence.put("type",type);
+		//		presence.put("type",type);
 		presence.put("name",name);
 		ProtocolNode node = new ProtocolNode("presence", presence, null, null);
 		sendNode(node);
 		eventManager().fireSendPresence(
 				phoneNumber, 
-				presence.get("type"), 
+				type,
 				presence.get("name")
 				);
 	}
@@ -1436,15 +1385,16 @@ public class WhatsApi {
 	 *
 	 * @return ProtocolNode
 	 *   Return itself.
+	 * @throws EncodeException 
 	 * @throws IOException 
 	 * @throws InvalidKeySpecException 
 	 * @throws NoSuchAlgorithmException 
 	 * @throws InvalidKeyException 
 	 */
-	private ProtocolNode createAuthResponseNode() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException, InvalidKeyException {
+	private ProtocolNode createAuthResponseNode() throws EncodeException, IOException {
 		byte[] resp = authenticate();
 		Map<String,String> attributes = new LinkedHashMap<String, String>();
-		attributes.put("xmlns","urn:ietf:params:xml:ns:xmpp-sasl");
+		//		attributes.put("xmlns","urn:ietf:params:xml:ns:xmpp-sasl");
 		ProtocolNode node = new ProtocolNode("response", attributes, null, resp);
 
 		return node;
@@ -1455,34 +1405,47 @@ public class WhatsApi {
 	 *
 	 * @return byte[]
 	 *   Returns binary string
-	 * @throws InvalidKeySpecException 
-	 * @throws NoSuchAlgorithmException 
+	 * @throws EncodeException 
 	 * @throws IOException 
-	 * @throws InvalidKeyException 
 	 */
-	private byte[] authenticate() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException, InvalidKeyException {
-		byte[] key = pbkdf2("SHA-1", base64_decode(password), getChallengeData(), 16, 20,true);
-		inputKey = new KeyStream(key);
-		outputKey = new KeyStream(key);
+	byte[] authenticate() throws EncodeException, IOException {
+		List<byte[]> keys = generateKeys();
+		inputKey = new KeyStream(keys.get(2), keys.get(3));
+		outputKey = new KeyStream(keys.get(0), keys.get(1));
 
 		ByteArrayOutputStream array = new ByteArrayOutputStream();
 		array.write(phoneNumber.getBytes()); 
 		array.write(challengeData);
-		array.write(Long.toString((new Date()).getTime()/1000).getBytes());
-		log.debug("array: "+toHex(array.toByteArray()));
-		byte[] response = outputKey.encode(array.toByteArray(), 0, array.size(), false);
-		log.debug("response: "+toHex(response));
+		//		array.write(Long.toString((new Date()).getTime()/1000).getBytes());
+		byte[] response = outputKey.encode(array.toByteArray(), 0, 0,array.size());
 		return response;
 	}
 
-	private byte[] getChallengeData() throws NoSuchAlgorithmException {
+	List<byte[]> generateKeys() throws EncodeException {
+		try {
+			List<byte[]> keys = new LinkedList<byte[]>();
+			for(int i = 0; i < 4; ++i) {
+				ByteArrayOutputStream nonce = getChallengeData();
+				nonce.write(i+1);
+				byte[] key = pbkdf2("SHA-1", base64_decode(password), nonce.toByteArray(), 2, 20,true);
+				keys.add(key);
+			}
+			return keys;
+		} catch (Exception e) {
+			throw new EncodeException(e);
+		}
+	}
+
+	private ByteArrayOutputStream getChallengeData() throws NoSuchAlgorithmException, IOException {
 		if(challengeData == null) {
 			log.info("Challenge data is missing!");
 			SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
 			challengeData = new byte[20];
 			sr.nextBytes(challengeData);		 
 		}
-		return challengeData;
+		ByteArrayOutputStream os = new ByteArrayOutputStream(challengeData.length);
+		os.write(challengeData);
+		return os;
 	}
 
 	protected byte[] pbkdf2(String algo, byte[] password,
@@ -1539,7 +1502,7 @@ public class WhatsApi {
 
 	}
 
-	private void processInboundData(byte[] readData) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException {
+	private void processInboundData(byte[] readData) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		if(readData == null) {
 			return;
 		}
@@ -1560,13 +1523,19 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 * @throws JSONException 
 	 * @throws NoSuchAlgorithmException 
+	 * @throws DecodeException 
+	 * @throws InvalidKeyException 
 	 * 
 	 */
-	private void processInboundDataNode(ProtocolNode node) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException {
+	private void processInboundDataNode(ProtocolNode node) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		while (node != null) {
 			ProtocolTag tag;
 			try {
-				tag = ProtocolTag.valueOf(node.getTag().replace(':', '_').toUpperCase());
+				tag = ProtocolTag.fromString(node.getTag().replace(':', '_').toUpperCase());
+				if(tag == null) {
+					tag = ProtocolTag.UNKNOWN;
+					log.info("Unknown/Unused tag "+node.getTag());
+				}
 			} catch (IllegalArgumentException e) {
 				tag = ProtocolTag.UNKNOWN;
 				log.info("Unknown/Unused tag "+node.getTag());
@@ -1588,11 +1557,20 @@ public class WhatsApi {
 			case MESSAGE:
 				processMessage(node);
 				break;
+			case ACK:
+				processAck(node);
+				break;
+			case RECEIPT:
+				processReceipt(node);
+				break;
 			case PRESENCE:
 				processPresence(node);
 				break;
 			case IQ:
 				processIq(node);
+				break;
+			case IB:
+				processIb(node);
 				break;
 			case STREAM_ERROR:
 				throw new WhatsAppException("stream:error received: ");
@@ -1611,9 +1589,48 @@ public class WhatsApi {
 		}
 	}
 
-	private void processIq(ProtocolNode node) throws IOException, WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, JSONException, NoSuchAlgorithmException {
+	private void processReceipt(ProtocolNode node) throws WhatsAppException {
+		log.debug("Processing RECEIPT");
+		serverReceivedId.add(node.getAttribute("id"));
+		sendAck(node);
+	}
+
+	private void sendAck(ProtocolNode node) throws WhatsAppException {
+		Map<String, String> attributes = new HashMap<String, String>();
+		attributes.put("id", node.getAttribute("id"));
+		attributes.put("to", node.getAttribute("from"));
+		attributes.put("t", node.getAttribute("t"));
+		ProtocolNode ack = new ProtocolNode("ack", attributes, null, null);
+		sendNode(ack);
+	}
+
+	private void processAck(ProtocolNode node) {
+		log.debug("Processing ACK");
+		serverReceivedId.add(node.getAttribute("id"));
+	}
+
+	private void processIb(ProtocolNode node) throws IOException, WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, JSONException, NoSuchAlgorithmException {
+		String type = node.getAttribute("type");
+		log.info("Processing IB "+(type==null?"":type));
+		for(ProtocolNode n : node.getChildren()) {
+			ProtocolTag tag = ProtocolTag.fromString(n.getTag());
+			switch(tag) {
+			case DIRTY:
+				List<String> categories = new LinkedList<String>();
+				categories.add(n.getAttribute("type"));
+				sendClearDirty(categories);
+				break;
+			case OFFLINE:
+				log.info("Offline count"+ n.getAttribute("count"));
+				break;
+			default:
+			}
+		}
+	}
+	private void processIq(ProtocolNode node) throws IOException, WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
+		log.info("Processing IQ "+node.getAttribute("type"));
 		if (node.getAttribute("type").equals("get")
-				&& ProtocolTag.valueOf(node.getChild(0).getTag()) == ProtocolTag.PING) {
+				&& node.getAttribute("xmlns").equals("urn:xmpp:ping")) {
 			eventManager().firePing(
 					phoneNumber,
 					node.getAttribute("id")
@@ -1736,8 +1753,10 @@ public class WhatsApi {
 	 * @throws IOException 
 	 * @throws JSONException 
 	 * @throws NoSuchAlgorithmException 
+	 * @throws DecodeException 
+	 * @throws InvalidKeyException 
 	 */
-	private boolean processUploadResponse(ProtocolNode node) throws IOException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, WhatsAppException, JSONException, NoSuchAlgorithmException {
+	private boolean processUploadResponse(ProtocolNode node) throws IOException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		String url = null;
 		String filesize = null;
 		String filetype = null;
@@ -1887,7 +1906,7 @@ public class WhatsApi {
 		challengeData = node.getData();
 	}
 
-	private void processPresence(ProtocolNode node) {
+	private void processPresence(ProtocolNode node) throws WhatsAppException {
 		if (node.getAttribute("status") != null && node.getAttribute("status").equals("dirty")) {
 			//clear dirty
 			List<String> categories = new LinkedList<String>();
@@ -1939,9 +1958,23 @@ public class WhatsApi {
 		return null;
 	}
 
-	private void sendClearDirty(List<String> categories) {
-		// TODO Auto-generated method stub
+	private void sendClearDirty(List<String> categories) throws WhatsAppException {
+		String msgId = createMsgId("cleardirty");
 
+		List<ProtocolNode> catnodes = new LinkedList<ProtocolNode>();
+		for (String category : categories) {
+			Map<String,String> catmap = new HashMap<String, String>();
+			catmap.put("type", category);
+			ProtocolNode catnode = new ProtocolNode("clean", catmap, null, null);
+			catnodes.add(catnode);
+		}
+		Map<String,String> nodemap = new HashMap<String, String>();
+		nodemap.put("id", msgId);
+		nodemap.put("type", "set");
+		nodemap.put("to", WHATSAPP_SERVER);
+		nodemap.put("xmlns", "urn:xmpp:whatsapp:dirty");
+		ProtocolNode node = new ProtocolNode("iq", nodemap, catnodes, null);
+		sendNode(node);
 	}
 
 	private void processMessage(ProtocolNode node) throws IOException, WhatsAppException {
@@ -1949,9 +1982,8 @@ public class WhatsApi {
 		messageQueue.add(node);
 
 		//do not send received confirmation if sender is yourself
-		if (!node.getAttribute("from").contains(phoneNumber + "@" + WHATSAPP_SERVER)
-				&& (node.hasChild("request") || node.hasChild("received"))) {
-			sendMessageReceived(node);
+		if(node.getAttribute("type").equals("text")) {
+			sendMessageReceived(node,null);
 		}
 
 		// check if it is a response to a status request
@@ -2174,36 +2206,21 @@ public class WhatsApi {
 		}
 	}
 
-	private void sendMessageReceived(ProtocolNode msg) throws IOException, WhatsAppException {
-		ProtocolNode requestNode = msg.getChild("request");
-		ProtocolNode receivedNode = msg.getChild("received");
-		if (requestNode != null || receivedNode != null) {
-			Map<String,String> receivedHash = new LinkedHashMap<String, String>();
-			receivedHash.put("xmlns","urn:xmpp:receipts");
-
-			String response = "received";
-			if(receivedNode != null)
-			{
-				response = "ack";
-			}
-
-			receivedNode = new ProtocolNode(response, receivedHash, null, null);
-
-			Map<String,String> messageHash = new LinkedHashMap<String, String>();
-			messageHash.put("to",msg.getAttribute("from"));
-			messageHash.put("type","chat");
-			messageHash.put("id",msg.getAttribute("id"));
-			messageHash.put("t",Long.toString(new Date().getTime()));
-			LinkedList<ProtocolNode> receivedList = new LinkedList<ProtocolNode>();
-			receivedList.add(receivedNode);
-			ProtocolNode messageNode = new ProtocolNode("message", messageHash, receivedList, null);
-			sendNode(messageNode);
-			eventManager().fireSendMessageReceived(
-					phoneNumber, 
-					msg.getAttribute("from"),
-					messageHash.get("t") 
-					);
-		}
+	private void sendMessageReceived(ProtocolNode msg, String type) throws IOException, WhatsAppException {
+		Map<String,String> messageHash = new LinkedHashMap<String, String>();
+		messageHash.put("to",msg.getAttribute("from"));
+		if(type != null && type.equals("read"))
+			messageHash.put("type","type");
+		
+		messageHash.put("id",msg.getAttribute("id"));
+		messageHash.put("t",Long.toString(new Date().getTime()));
+		ProtocolNode messageNode = new ProtocolNode("receipt", messageHash, null, null);
+		sendNode(messageNode);
+		eventManager().fireSendMessageReceived(
+				phoneNumber, 
+				msg.getAttribute("from"),
+				messageHash.get("t") 
+				);
 	}
 
 	private byte[] readData() throws IOException {
@@ -2214,16 +2231,18 @@ public class WhatsApi {
 			try {
 				int ret = stream.read(buf);
 				if(ret > 0) {
-					
+					log.debug("Read: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
+
 				} else {
 					if(ret == -1) {
 						log.error("socket EOF, closing socket...");
 						socket.close();
 						socket = null;
+						disconnect();
 					}
 				}
 			} catch (SocketTimeoutException e) {
-				
+
 			}
 		}
 		return buf;
@@ -2231,7 +2250,7 @@ public class WhatsApi {
 
 	private void sendNode(ProtocolNode node) throws WhatsAppException {
 		try {
-			byte[] data = writer.write(node);
+			byte[] data = writer.write(node, true);
 			log.debug("tx: "+node.toString());
 			sendData(data);
 		} catch (Exception e) {
@@ -2241,12 +2260,6 @@ public class WhatsApi {
 
 	private void sendData(byte[] data) throws IOException {
 		if(socket != null && socket.isConnected()) {
-			if(log.isDebugEnabled()) {
-				try {
-					log.debug("sendData: "+toHex(data));
-				} catch (NoSuchAlgorithmException e) {
-				}
-			}
 			socket.getOutputStream().write(data);
 		}
 	}
@@ -2256,16 +2269,15 @@ public class WhatsApi {
 	 *
 	 * @return ProtocolNode
 	 *   Return itself.
+	 * @throws EncodeException 
 	 * @throws IOException 
-	 * @throws InvalidKeySpecException 
 	 * @throws NoSuchAlgorithmException 
-	 * @throws InvalidKeyException 
 	 */
-	private ProtocolNode createAuthNode() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException, InvalidKeyException
+	private ProtocolNode createAuthNode() throws NoSuchAlgorithmException, EncodeException, IOException
 	{
 		Map<String, String> attributes = new LinkedHashMap<String, String>();
-		attributes.put("xmlns", "urn:ietf:params:xml:ns:xmpp-sasl");
-		attributes.put("mechanism", "WAUTH-1");
+		//		attributes.put("xmlns", "urn:ietf:params:xml:ns:xmpp-sasl");
+		attributes.put("mechanism", "WAUTH-2");
 		attributes.put("user",phoneNumber);
 		byte[] data;
 		data = createAuthBlob();
@@ -2275,16 +2287,17 @@ public class WhatsApi {
 	}
 
 
-	private byte[] createAuthBlob() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException, InvalidKeyException {
+	private byte[] createAuthBlob() throws EncodeException, IOException, NoSuchAlgorithmException {
 		if(challengeData != null) {
 			// TODO
-			byte[] key = pbkdf2("PBKDF2WithHmacSHA1", base64_decode(password), challengeData, 16, 20, true);
-			inputKey = new KeyStream(key);
-			outputKey = new KeyStream(key);
+			//			byte[] key = pbkdf2("PBKDF2WithHmacSHA1", base64_decode(password), challengeData, 16, 20, true);
+			List<byte[]> keys = generateKeys();
+			inputKey = new KeyStream(keys.get(2), keys.get(3));
+			outputKey = new KeyStream(keys.get(0), keys.get(1));
 			reader.setKey(inputKey);
-			writer.setKey(outputKey);
+			//			writer.setKey(outputKey);
 			Map<String, String> phone = dissectPhone();
-			ByteArrayOutputStream array = new ByteArrayOutputStream(); 
+			ByteArrayOutputStream array = new ByteArrayOutputStream();
 			array.write(phoneNumber.getBytes());
 			array.write(challengeData);
 			array.write(time().getBytes());
@@ -2295,7 +2308,7 @@ public class WhatsApi {
 			log.debug("createAuthBlog: challengeData="+toHex(challengeData));
 			log.debug("createAuthBlog: array="+toHex(array.toByteArray()));
 			challengeData = null;
-			return outputKey.encode(array.toByteArray(), 0, array.size(), false);
+			return outputKey.encode(array.toByteArray(), 0, 4, array.size()-4);
 		}
 		return null;	
 	}
@@ -2342,16 +2355,20 @@ public class WhatsApi {
 	 */
 	private ProtocolNode createFeaturesNode(boolean profileSubscribe) {
 		LinkedList<ProtocolNode> nodes = new LinkedList<ProtocolNode>();
-		ProtocolNode receiptAcks = new ProtocolNode("receipt_acks", null, null, null);
-		nodes.add(receiptAcks);
+		ProtocolNode node = new ProtocolNode("readreceipts", null, null, null);
+		nodes.add(node);
 		if (profileSubscribe) {
 			Map<String, String> attributes = new LinkedHashMap<String, String>();
 			attributes.put("type", "all");
 			ProtocolNode profile = new ProtocolNode("w:profile:picture", attributes, null, null);
 			nodes.add(profile);
 		}
-		ProtocolNode status = new ProtocolNode("status", null, null, null);
-		nodes.add(status);
+		node = new ProtocolNode("privacy", null, null, null);
+		nodes.add(node);
+		node = new ProtocolNode("presence", null, null, null);
+		nodes.add(node);
+		node = new ProtocolNode("groups_v2", null, null, null);
+		nodes.add(node);
 		ProtocolNode parent = new ProtocolNode("stream:features", null, nodes, null);
 
 		return parent;
@@ -2395,8 +2412,10 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 * @throws JSONException 
 	 * @throws NoSuchAlgorithmException 
+	 * @throws DecodeException 
+	 * @throws InvalidKeyException 
 	 */
-	private String sendMessageNode(String to, ProtocolNode node, String id) throws IOException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, WhatsAppException, JSONException, NoSuchAlgorithmException {
+	private String sendMessageNode(String to, ProtocolNode node, String id) throws IOException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		ProtocolNode serverNode = new ProtocolNode("server", null, null, null);
 		List<ProtocolNode> list = new LinkedList<ProtocolNode>();
 		list.add(serverNode);
@@ -2413,14 +2432,14 @@ public class WhatsApi {
 
 		Map<String,String> messageHash = new LinkedHashMap<String, String>();
 		messageHash.put("to",getJID(to));
-		messageHash.put("type","chat");
+		messageHash.put("type","text");
 		messageHash.put("id",(id == null?createMsgId("message"):id));
 		messageHash.put("t",time());
 
 		list = new LinkedList<ProtocolNode>();
-		list.add(xNode);
-		list.add(notnode);
-		list.add(reqnode);
+		//		list.add(xNode);
+		//		list.add(notnode);
+		//		list.add(reqnode);
 		list.add(node);
 		ProtocolNode messageNode = new ProtocolNode("message", messageHash, list, null);
 		if (lastId == null) {
@@ -2440,7 +2459,7 @@ public class WhatsApi {
 		return messageHash.get("id");
 	}
 
-	private void waitForServer(String id) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException {
+	private void waitForServer(String id) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		Date start = new Date();
 		Date now = start;
 		while (!checkReceivedId(id) && (now.getTime() - start.getTime()) < 5000) {
@@ -2469,7 +2488,8 @@ public class WhatsApi {
 		return false;
 	}
 
-	public void pollMessages() throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException {
+	public void pollMessages() throws InvalidKeyException, NoSuchAlgorithmException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, DecodeException {
+		//		log.debug("Polling messages");
 		if(pollLock.tryLock()) {
 			// First here, so let's do the work
 			pollLock.lock();
@@ -2557,6 +2577,50 @@ public class WhatsApi {
 
 	public void setEventManager(EventManager eventManager) {
 		this.eventManager = eventManager;
+	}
+
+	public void setChallengeData(String challenge) {
+		challengeData = hex2bin(challenge);
+	}
+
+	static byte[] hex2bin(String challenge) {
+		byte[] bytes = null;
+
+		//hexString = removeSpaces(hexString);        
+		if ( challenge.indexOf( " " ) < 0 )
+		{
+			bytes = new byte[challenge.length()/2];
+			for ( int i=0; i<challenge.length(); i+=2 ) 
+			{
+				bytes[i/2]=(byte) Integer.parseInt( challenge.substring(i,i+2), 16);
+			}
+		}
+		else
+		{
+			String[] parts = challenge.split(" ");
+			bytes = new byte[parts.length];
+			for ( int i=0; i<parts.length; i++ ) 
+			{
+				bytes[i] = (byte) Integer.parseInt( parts[i], 16);
+			}
+		}
+		return bytes;
+	}
+
+	public void setPassword(String pw) {
+		this.password = pw;
+	}
+
+	public KeyStream getInputKey() {
+		return inputKey;
+	}
+
+	public void setInputKey(KeyStream inputKey) {
+		this.inputKey = inputKey;
+	}
+
+	public KeyStream getOutputKey() {
+		return outputKey;
 	}
 
 }

@@ -120,7 +120,7 @@ public class ProtocolNode {
 		return sb.toString();
 	}
 
-    private String bin2hex(byte[] bin) {
+    public static String bin2hex(byte[] bin) {
         StringBuilder sb = new StringBuilder();
         for(int i=0; i< bin.length ;i++)
         {

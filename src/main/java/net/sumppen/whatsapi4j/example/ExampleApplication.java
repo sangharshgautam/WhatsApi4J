@@ -4,7 +4,11 @@ import java.io.Console;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
-import org.apache.log4j.ConsoleAppender;
+import net.sumppen.whatsapi4j.EventManager;
+import net.sumppen.whatsapi4j.MessageProcessor;
+import net.sumppen.whatsapi4j.WhatsApi;
+import net.sumppen.whatsapi4j.WhatsAppException;
+
 import org.apache.log4j.FileAppender;
 import org.apache.log4j.Layout;
 import org.apache.log4j.Level;
@@ -13,19 +17,20 @@ import org.apache.log4j.PatternLayout;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import net.sumppen.whatsapi4j.EventManager;
-import net.sumppen.whatsapi4j.MessageProcessor;
-import net.sumppen.whatsapi4j.WhatsApi;
-import net.sumppen.whatsapi4j.WhatsAppException;
-
+/**
+ * Example application
+ * Launch with: java -cp target/dependency/*:target/whatsapi4j-1.0.0-SNAPSHOT.jar net.sumppen.whatsapi4j.example.ExampleApplication 358401122333 'mypassword' 'mytestapplication' 'My Test Account'
+ * @author kim
+ *
+ */
 public class ExampleApplication {
-
 	private enum WhatsAppCommand {
 		send,request,register,status
 	}
 
+	public static boolean running = true;
+	
 	public static void main(String[] args) {
-		boolean running = true;
 		boolean loggedIn = false;
 		Logger.getRootLogger().setLevel(Level.ALL);
 		Layout layout = new PatternLayout("%d [%t] %-5p %c %x - %m%n");
@@ -73,8 +78,8 @@ public class ExampleApplication {
 				loggedIn = true;
 			}
 			String cmd;
-			ExampleMessagePoller poller = new ExampleMessagePoller(wa);
-			poller.start();
+//			ExampleMessagePoller poller = new ExampleMessagePoller(wa);
+//			poller.start();
 			System.out.print("$ ");
 			while(running && (cmd=cons.readLine()) != null) {
 				try {
@@ -119,7 +124,7 @@ public class ExampleApplication {
 				}
 				System.out.print("$ ");
 			}
-			poller.setRunning(false);
+//			poller.setRunning(false);
 			System.out.println("Done! Logging out");
 			wa.disconnect();
 		} catch (Exception e) {

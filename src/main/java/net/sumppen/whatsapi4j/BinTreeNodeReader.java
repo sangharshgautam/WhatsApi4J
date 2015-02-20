@@ -2,6 +2,8 @@ package net.sumppen.whatsapi4j;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -11,15 +13,10 @@ import org.apache.log4j.Logger;
 
 public class BinTreeNodeReader {
 
-	private String[] dictionary;
 	private KeyStream key;
 	private byte[] input;
 	private final Logger log = Logger.getLogger(BinTreeNodeReader.class);
 
-	public BinTreeNodeReader(String[] dictionary) {
-		this.dictionary = dictionary;
-	}
-	
 	public void resetKey() {
 		this.key = null;
 	}
@@ -36,25 +33,41 @@ public class BinTreeNodeReader {
 	 * @throws InvalidMessageException 
 	 * @throws InvalidTokenException 
 	 * @throws IOException 
+	 * @throws DecodeException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
 	 */
-	public ProtocolNode nextTree(byte[] readData) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException {
+	public ProtocolNode nextTree(byte[] readData) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, InvalidKeyException, NoSuchAlgorithmException, DecodeException {
 		if(readData != null) {
 			input = readData;
-//			log.debug("Input ="+new String(readData));
+//			log.debug("Input ="+ProtocolNode.bin2hex(readData));
 		}
 		
-		int stanzaFlag = (peekInt8(0) & 0xF0) >> 4;
-		int stanzaSize = peekInt16(1);
+		int firstByte  = peekInt8(0);
+		int stanzaFlag = (firstByte & 0xF0) >> 4;
+		int stanzaSize = peekInt16(1) | ((firstByte & 0x0f) << 16);
 		if(stanzaSize > input.length) {
-			throw new IncompleteMessageException("incomplete message");
+			log.info("fb:"+firstByte+", sf="+stanzaFlag+", sz="+stanzaSize);
+			if(input != null && input.length > 0) {
+				log.debug("Input:"+ProtocolNode.bin2hex(input));
+			}
+			throw new IncompleteMessageException("incomplete message: "+stanzaSize+">"+input.length);
 		}
 	    readInt24();
 	    if ((stanzaFlag & 8) != 0) {
 	    	if (key != null) {
-	    		byte[] remainingData = Arrays.copyOfRange(input, stanzaSize, input.length+1);
-	            byte[] decoded = key.decode(input, 0, stanzaSize);
-	            input = Arrays.copyOf(decoded, decoded.length+remainingData.length);
-	            System.arraycopy(remainingData, 0, input, decoded.length, remainingData.length);
+	    		try {
+	    			byte[] decoded = key.decode(input, stanzaSize-4, 0, stanzaSize-4);
+	    			ByteArrayOutputStream s = new ByteArrayOutputStream();
+	    			s.write(Arrays.copyOf(decoded, stanzaSize-4));
+	    			s.write(Arrays.copyOfRange(input, stanzaSize, input.length));
+	    			input = s.toByteArray();
+	    			
+	    		} catch (DecodeException e) {
+	    			log.info("Decode failed");
+					log.debug("Input ="+ProtocolNode.bin2hex(Arrays.copyOf(readData,stanzaSize+3)));
+					throw e;
+	    		}
 	        } else {
 	            throw new InvalidMessageException("Encountered encrypted message, missing key");
 	        }
@@ -137,8 +150,13 @@ public class BinTreeNodeReader {
             		ret.write(server);
             	}
             }
+            break;
+        case 0xff:
+        	byte[] nibble = readNibble();
+        	ret.write(nibble);
+        	break;
         default:
-            if(token > 4 && token < 0xf5) {
+            if(token > 2 && token < 0xf5) {
             	ret.write(getToken(token));
             }
             break;
@@ -147,6 +165,49 @@ public class BinTreeNodeReader {
 
         return ret.toByteArray();
     }
+
+	private byte[] readNibble() throws InvalidTokenException {
+	      int b = readInt8();
+
+	      int ignoreLastNibble = (b & 0x80);
+	      int size = (b & 0x7f);
+	      int nrOfNibbles = size * 2 - ignoreLastNibble;
+
+	      byte[] data = fillArray(size);
+//	      log.debug(ProtocolNode.bin2hex(data));
+	      String string = "";
+
+	      for (int i = 0; i < nrOfNibbles; i++) {
+	        b = data[(int) Math.floor(i / 2)];
+
+	        int shift = 4 * (1 - i % 2);
+	        int decimal = (b & (15 << shift)) >> shift;
+
+	        switch (decimal) {
+	          case 0:
+	          case 1:
+	          case 2:
+	          case 3:
+	          case 4:
+	          case 5:
+	          case 6:
+	          case 7:
+	          case 8:
+	          case 9:
+	        	  string += decimal;
+	        	  break;
+	          case 10:
+	          case 11:
+	        	  string += ((char)(decimal - 10 + 45));
+	          break;
+	          default:
+	          throw new InvalidTokenException("Bad nibble: "+decimal);
+	        }
+	      }
+
+//	      log.debug(string);
+	      return string.getBytes();
+	}
 
 	private byte[] fillArray(int size) {
         byte[] ret = null;
@@ -160,12 +221,17 @@ public class BinTreeNodeReader {
 
 	private byte[] getToken(int token) throws InvalidTokenException {
         String ret = "";
-        if ((token >= 0) && (token < dictionary.length)) {
-            ret = dictionary[token];
-        } else {
-            throw new InvalidTokenException("BinTreeNodeReader->getToken: Invalid token "+token);
+        boolean subdict = false;
+        Token t = TokenMap.getToken(token, subdict);
+        if (t == null) {
+        	log.info("Token "+token+ " not found!");
+            token = readInt8();
+            t = TokenMap.getToken(token, subdict);
+            if(t == null) {
+            	throw new InvalidTokenException("BinTreeNodeReader->getToken: Invalid token "+token);
+            }
         }
-
+        ret = t.getName();
         return ret.getBytes();
     }
 

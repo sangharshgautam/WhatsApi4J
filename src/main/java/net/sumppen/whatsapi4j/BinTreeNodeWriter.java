@@ -9,25 +9,16 @@ import java.util.Map;
 
 public class BinTreeNodeWriter {
 
-	private final Map<String,Integer> tokenMap = new LinkedHashMap<String,Integer>();
 	private ByteArrayOutputStream output = new ByteArrayOutputStream();
 	private KeyStream key;
 
-	public BinTreeNodeWriter(String[] dictionary) {
-		for (int i = 0; i < dictionary.length; i++) {
-			if (dictionary[i] != null && dictionary[i].length() > 0) {
-				tokenMap.put(dictionary[i],i);
-			}
-		}
-	}
-
-	public byte[] startStream(String domain, String resource) throws IOException, InvalidKeyException, NoSuchAlgorithmException {
+	public byte[] startStream(String domain, String resource) throws IOException, InvalidKeyException, NoSuchAlgorithmException, EncodeException {
         Map<String,String> attributes = new LinkedHashMap<String, String>();
         ByteArrayOutputStream ret = new ByteArrayOutputStream();
         ret.write('W');
         ret.write('A');
         ret.write(writeInt8(1));
-        ret.write(writeInt8(2));
+        ret.write(writeInt8(5));
 
         attributes.put("to",domain);
         attributes.put("resource",resource);
@@ -35,7 +26,7 @@ public class BinTreeNodeWriter {
 
         output.write(0x01);
         writeAttributes(attributes);
-        flushBuffer().writeTo(ret);
+        flushBuffer(true).writeTo(ret);
 
         return ret.toByteArray();
 	}
@@ -56,8 +47,9 @@ public class BinTreeNodeWriter {
      * @throws IOException 
      * @throws NoSuchAlgorithmException 
      * @throws InvalidKeyException 
+     * @throws EncodeException 
      */
-    public byte[] write(ProtocolNode node) throws IOException, InvalidKeyException, NoSuchAlgorithmException
+    public byte[] write(ProtocolNode node, boolean encrypted) throws IOException, InvalidKeyException, NoSuchAlgorithmException, EncodeException
     {
         if (node == null) {
             output.write(0x00);
@@ -65,7 +57,7 @@ public class BinTreeNodeWriter {
             writeInternal(node);
         }
 
-        return flushBuffer().toByteArray();
+        return flushBuffer(encrypted).toByteArray();
     }
 
     /**
@@ -98,13 +90,25 @@ public class BinTreeNodeWriter {
         }
     }
 
-    protected ByteArrayOutputStream flushBuffer() throws IOException, InvalidKeyException, NoSuchAlgorithmException
+    protected ByteArrayOutputStream flushBuffer(boolean encrypted) throws EncodeException, IOException
     {
-		byte[] data = ((key != null) ? key.encode(output.toByteArray(), 0, output.size()) : output.toByteArray());
-    	ByteArrayOutputStream ret = new ByteArrayOutputStream();
-        int size = data.length;
-        ret.write(writeInt8(key != null ? (1 << 4) : 0));
-        ret.write(writeInt16(size));
+		byte[] data;
+		int size;
+		data = output.toByteArray();
+		size = data.length;
+		ByteArrayOutputStream ret = new ByteArrayOutputStream();
+		if(key != null && encrypted) {
+			byte[] bsize = { 0,0,0 }; 
+			data = key.encode(output.toByteArray(), size, 0, size);
+			int len = data.length;
+			bsize[0] = (byte)((8 << 4) | ((len & 16711680) >> 16));
+			bsize[1] = (byte)(((len & 65280) >> 8));
+			bsize[2] = (byte)((len & 255) );
+			ret.write(bsize);
+		} else {
+			ret.write(writeInt8(key != null ? (1 << 4) : 0));
+			ret.write(writeInt16(size));
+		}
         ret.write(data);
         output.reset();
         return ret;
@@ -167,9 +171,12 @@ public class BinTreeNodeWriter {
 
     protected void writeString(String tag) throws IOException
     {
-    	if(tokenMap.containsKey(tag)) {
-            int key = tokenMap.get(tag);
-            writeToken(key);
+    	Token t = TokenMap.tryGetToken(tag);
+    	if( t != null ) {
+    		if(t.isSubdictionary()) {
+    			writeToken(236);
+    		}
+            writeToken(t.getToken());
         } else {
             int index = tag.indexOf('@');
             if (index >= 0) {

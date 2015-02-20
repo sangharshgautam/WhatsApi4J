@@ -1,14 +1,12 @@
-package net.sumppen.whatsapi4j.example;
+package net.sumppen.whatsapi4j;
 
 import java.net.SocketTimeoutException;
 
-import net.sumppen.whatsapi4j.WhatsApi;
-
-class ExampleMessagePoller extends Thread {
+public class MessagePoller extends Thread {
 	private boolean running = true;
 	private final WhatsApi wa;
 
-	public ExampleMessagePoller(WhatsApi wa) {
+	public MessagePoller(WhatsApi wa) {
 		this.wa = wa;
 	}
 
