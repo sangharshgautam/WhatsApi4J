@@ -502,10 +502,12 @@ public class TokenMap {
 
 	public static Token getToken(int token, boolean subdict) throws InvalidTokenException
     {
+//		log.debug("Getting token "+token+"("+subdict+")");
         //override subdict
-        if ( ! subdict && token >= 236 && token < (236 + secondaryStrings.length)) {
-            subdict = true;
-        }
+//        if ( ! subdict && token >= 236 && token < (236 + secondaryStrings.length)) {
+//        	log.debug("Change to subdict");
+//            subdict = true;
+//        }
         String[] tokenMap;
         if (subdict) {
             tokenMap = secondaryStrings;

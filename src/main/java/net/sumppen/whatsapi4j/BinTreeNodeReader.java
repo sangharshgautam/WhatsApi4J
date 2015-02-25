@@ -221,15 +221,18 @@ public class BinTreeNodeReader {
 
 	private byte[] getToken(int token) throws InvalidTokenException {
         String ret = "";
+        Token t = null;
         boolean subdict = false;
-        Token t = TokenMap.getToken(token, subdict);
+        if(token >= 236) {
+        	subdict = true;
+        	token = readInt8();
+        	t = TokenMap.getToken(token, subdict);
+        } else {
+        	t = TokenMap.getToken(token, subdict);
+        }
         if (t == null) {
-        	log.info("Token "+token+ " not found!");
-            token = readInt8();
-            t = TokenMap.getToken(token, subdict);
-            if(t == null) {
-            	throw new InvalidTokenException("BinTreeNodeReader->getToken: Invalid token "+token);
-            }
+        	log.info("Token "+token+ "("+subdict+") not found!");
+        	throw new InvalidTokenException("BinTreeNodeReader->getToken: Invalid token "+token);
         }
         ret = t.getName();
         return ret.getBytes();
