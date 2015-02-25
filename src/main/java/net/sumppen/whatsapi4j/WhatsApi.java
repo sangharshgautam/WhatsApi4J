@@ -1346,13 +1346,19 @@ public class WhatsApi {
 		sendNode(feat);
 		sendNode(auth);
 
-		processInboundData(readData());
+		pollMessages();
+		pollMessages();
+		pollMessages();
 
-		if(loginStatus != LoginStatus.CONNECTED_STATUS) {
+		if(challengeData != null) {
 			ProtocolNode dataNode = createAuthResponseNode();
 			sendNode(dataNode);
 			reader.setKey(inputKey);
 			writer.setKey(outputKey);
+			pollMessages();
+		}
+		if(loginStatus == LoginStatus.DISCONNECTED_STATUS) {
+			throw new WhatsAppException("Login failure");
 		}
 		int cnt = 0;
 		poller = new MessagePoller(this);
@@ -1503,7 +1509,7 @@ public class WhatsApi {
 	}
 
 	private void processInboundData(byte[] readData) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
-		if(readData == null) {
+		if(readData == null || readData.length == 0) {
 			return;
 		}
 		ProtocolNode node = reader.nextTree(readData);
@@ -1592,6 +1598,14 @@ public class WhatsApi {
 	private void processReceipt(ProtocolNode node) throws WhatsAppException {
 		log.debug("Processing RECEIPT");
 		serverReceivedId.add(node.getAttribute("id"));
+		eventManager().fireMessageReceivedClient(
+				phoneNumber,
+				node.getAttribute("from"),
+				node.getAttribute("id"),
+				(node.getAttribute("type")==null?"":node.getAttribute("type")),
+				node.getAttribute("t")
+				);
+
 		sendAck(node);
 	}
 
@@ -2225,15 +2239,43 @@ public class WhatsApi {
 
 	private byte[] readData() throws IOException {
 		byte[] buf = null;
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		if(socket != null && socket.isConnected()) {
 			InputStream stream = socket.getInputStream();
-			buf = new byte[1042];
+			buf = new byte[3];
 			try {
+				//Read header first
 				int ret = stream.read(buf);
-				if(ret > 0) {
-					log.debug("Read: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
-
+				if(ret == 3) {
+//					log.debug("Read header: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
+					int treeLength = (buf[0] & 0x0f) << 16;
+					treeLength += buf[1] << 8;
+					treeLength += buf[2] << 0;
+//					log.debug("Tree length = "+treeLength);
+					out.write(buf);
+					buf = new byte[treeLength];
+					int read = 0;
+					while(read < treeLength) {
+						ret = stream.read(buf);
+						if(ret > 0) {
+//							log.debug("Read content: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
+							out.write(Arrays.copyOf(buf, ret));
+							read += ret;
+						} else {
+							if(ret == 0) {
+								break;
+							} else {
+								log.error("socket EOF, closing socket...");
+								socket.close();
+								socket = null;
+								disconnect();
+							}
+						}
+					}
 				} else {
+					if(ret > 0) {
+						log.warn("Failed to read stanza header");
+					}
 					if(ret == -1) {
 						log.error("socket EOF, closing socket...");
 						socket.close();
@@ -2245,7 +2287,8 @@ public class WhatsApi {
 
 			}
 		}
-		return buf;
+		byte[] outBytes = out.toByteArray();
+		return outBytes;
 	}
 
 	private void sendNode(ProtocolNode node) throws WhatsAppException {
@@ -2416,40 +2459,20 @@ public class WhatsApi {
 	 * @throws InvalidKeyException 
 	 */
 	private String sendMessageNode(String to, ProtocolNode node, String id) throws IOException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
-		ProtocolNode serverNode = new ProtocolNode("server", null, null, null);
-		List<ProtocolNode> list = new LinkedList<ProtocolNode>();
-		list.add(serverNode);
-		Map<String,String> xHash = new LinkedHashMap<String, String>();
-		xHash.put("xmlns", "jabber:x:event");
-		ProtocolNode xNode = new ProtocolNode("x", xHash, list, null);
-		Map<String,String> notify = new LinkedHashMap<String, String>();
-		notify.put("xmlns","urn:xmpp:whatsapp");
-		notify.put("name",name);
-		ProtocolNode notnode = new ProtocolNode("notify", notify, null, null);
-		Map<String,String> request = new LinkedHashMap<String, String>();
-		request.put("xmlns","urn:xmpp:receipts");
-		ProtocolNode reqnode = new ProtocolNode("request", request, null, null);
-
 		Map<String,String> messageHash = new LinkedHashMap<String, String>();
 		messageHash.put("to",getJID(to));
-		messageHash.put("type","text");
+		if(node.getTag().equals("body")) {
+			messageHash.put("type","text");
+		} else {
+			messageHash.put("type","media");
+		}
 		messageHash.put("id",(id == null?createMsgId("message"):id));
 		messageHash.put("t",time());
 
-		list = new LinkedList<ProtocolNode>();
-		//		list.add(xNode);
-		//		list.add(notnode);
-		//		list.add(reqnode);
+		List<ProtocolNode> list = new LinkedList<ProtocolNode>();
 		list.add(node);
 		ProtocolNode messageNode = new ProtocolNode("message", messageHash, list, null);
-		if (lastId == null) {
-			lastId = messageHash.get("id");
-			sendNode(messageNode);
-			//listen for response
-			waitForServer(messageHash.get("id"));
-		} else {
-			outQueue.add(messageNode);
-		}
+		sendNode(messageNode);
 		eventManager().fireSendMessage(
 				phoneNumber,
 				getJID(to),
@@ -2488,21 +2511,9 @@ public class WhatsApi {
 		return false;
 	}
 
-	public void pollMessages() throws InvalidKeyException, NoSuchAlgorithmException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, DecodeException {
-		//		log.debug("Polling messages");
-		if(pollLock.tryLock()) {
-			// First here, so let's do the work
-			pollLock.lock();
-			processInboundData(readData());
-			pollLock.unlock();
-		} else {
-			// Someone else polling, so we just wait for the results
-			try {
-				Thread.sleep(250);
-			} catch (InterruptedException e) {
-				log.info("Thread interrupted: "+e.getMessage());
-			}
-		}
+	public synchronized void pollMessages() throws InvalidKeyException, NoSuchAlgorithmException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, DecodeException {
+//		log.debug("Polling messages");
+		processInboundData(readData());
 	}
 
 	private String createMsgId(String prefix) {
