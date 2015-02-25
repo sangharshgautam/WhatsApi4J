@@ -1,8 +1,11 @@
 package net.sumppen.whatsapi4j.example;
 
 import java.io.Console;
+import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URISyntaxException;
+import java.net.URL;
 
 import net.sumppen.whatsapi4j.EventManager;
 import net.sumppen.whatsapi4j.MessageProcessor;
@@ -25,7 +28,7 @@ import org.json.JSONObject;
  */
 public class ExampleApplication {
 	private enum WhatsAppCommand {
-		send,request,register,status
+		send,request,register,status,text,sendText,image,sendImage,video,sendVideo
 	}
 
 	public static boolean running = true;
@@ -86,8 +89,26 @@ public class ExampleApplication {
 					WhatsAppCommand wac = WhatsAppCommand.valueOf(cmd);
 					switch(wac) {
 					case send:
+					case text:
+					case sendText:
 						if(loggedIn) {
-							sendMessage(cons,wa);
+							sendTextMessage(cons,wa);
+						} else {
+							System.out.println("Not logged in!");
+						}
+						break;
+					case image:
+					case sendImage:
+						if(loggedIn) {
+							sendImageMessage(cons,wa);
+						} else {
+							System.out.println("Not logged in!");
+						}
+						break;
+					case video:
+					case sendVideo:
+						if(loggedIn) {
+							sendVideoMessage(cons,wa);
 						} else {
 							System.out.println("Not logged in!");
 						}
@@ -121,6 +142,7 @@ public class ExampleApplication {
 				} catch (IllegalArgumentException e) {
 					if(cmd.length() > 0)
 						System.out.println("Unknown command: "+cmd);
+					e.printStackTrace();
 				}
 				System.out.print("$ ");
 			}
@@ -162,7 +184,7 @@ public class ExampleApplication {
 		System.out.println("Registration sent: "+resp.toString(2));
 	}
 
-	private static void sendMessage(Console cons, WhatsApi wa) throws WhatsAppException {
+	private static void sendTextMessage(Console cons, WhatsApi wa) throws WhatsAppException {
 		System.out.print("To: ");
 		String to = cons.readLine();
 		if(to == null || to.length() == 0) {
@@ -174,6 +196,40 @@ public class ExampleApplication {
 			return;
 		}
 		String res = wa.sendMessage(to, message);
+		System.out.println(res);
+	}
+	
+	private static void sendImageMessage(Console cons, WhatsApi wa) throws WhatsAppException, URISyntaxException {
+		System.out.print("To: ");
+		String to = cons.readLine();
+		if(to == null || to.length() == 0) {
+			return;
+		}
+		System.out.print("Caption: ");
+		String message = cons.readLine();
+		if(message == null || message.length() == 0) {
+			return;
+		}
+		File image = new File("exampleData/bananas.jpg");
+		File preview = new File("exampleData/bananas-preview.jpg");
+		JSONObject res = wa.sendMessageImage(to, image, preview, message);
+		System.out.println(res);
+	}
+	
+	private static void sendVideoMessage(Console cons, WhatsApi wa) throws WhatsAppException {
+		System.out.print("To: ");
+		String to = cons.readLine();
+		if(to == null || to.length() == 0) {
+			return;
+		}
+		System.out.print("Caption: ");
+		String message = cons.readLine();
+		if(message == null || message.length() == 0) {
+			return;
+		}
+		File video = new File("exampleData/video.mp4");
+		File preview = new File("exampleData/video-preview.jpg");
+		JSONObject res = wa.sendMessageVideo(to, video,preview,message);
 		System.out.println(res);
 	}
 

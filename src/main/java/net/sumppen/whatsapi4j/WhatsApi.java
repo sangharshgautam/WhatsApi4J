@@ -89,7 +89,7 @@ public class WhatsApi {
 	private int messageCounter = 0;
 	private final List<Country> countries;
 	private Map<String,Map<String,Object>> mediaQueue = new HashMap<String, Map<String,Object>>();
-	private File mediaFile;
+	private MediaInfo mediaFile;
 	private JSONObject mediaInfo;
 	private MessageProcessor processor = null;
 	private Lock pollLock = new ReentrantLock();
@@ -290,27 +290,6 @@ public class WhatsApi {
 	}
 
 	protected String generateRequestToken(String country, String phone) throws IOException, NoSuchAlgorithmException {
-		//		String signature = "MIIDMjCCAvCgAwIBAgIETCU2pDALBgcqhkjOOAQDBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFDASBgNVBAcTC1NhbnRhIENsYXJhMRYwFAYDVQQKEw1XaGF0c0FwcCBJbmMuMRQwEgYDVQQLEwtFbmdpbmVlcmluZzEUMBIGA1UEAxMLQnJpYW4gQWN0b24wHhcNMTAwNjI1MjMwNzE2WhcNNDQwMjE1MjMwNzE2WjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEUMBIGA1UEBxMLU2FudGEgQ2xhcmExFjAUBgNVBAoTDVdoYXRzQXBwIEluYy4xFDASBgNVBAsTC0VuZ2luZWVyaW5nMRQwEgYDVQQDEwtCcmlhbiBBY3RvbjCCAbgwggEsBgcqhkjOOAQBMIIBHwKBgQD9f1OBHXUSKVLfSpwu7OTn9hG3UjzvRADDHj+AtlEmaUVdQCJR+1k9jVj6v8X1ujD2y5tVbNeBO4AdNG/yZmC3a5lQpaSfn+gEexAiwk+7qdf+t8Yb+DtX58aophUPBPuD9tPFHsMCNVQTWhaRMvZ1864rYdcq7/IiAxmd0UgBxwIVAJdgUI8VIwvMspK5gqLrhAvwWBz1AoGBAPfhoIXWmz3ey7yrXDa4V7l5lK+7+jrqgvlXTAs9B4JnUVlXjrrUWU/mcQcQgYC0SRZxI+hMKBYTt88JMozIpuE8FnqLVHyNKOCjrh4rs6Z1kW6jfwv6ITVi8ftiegEkO8yk8b6oUZCJqIPf4VrlnwaSi2ZegHtVJWQBTDv+z0kqA4GFAAKBgQDRGYtLgWh7zyRtQainJfCpiaUbzjJuhMgo4fVWZIvXHaSHBU1t5w//S0lDK2hiqkj8KpMWGywVov9eZxZy37V26dEqr/c2m5qZ0E+ynSu7sqUD7kGx/zeIcGT0H+KAVgkGNQCo5Uc0koLRWYHNtYoIvt5R3X6YZylbPftF/8ayWTALBgcqhkjOOAQDBQADLwAwLAIUAKYCp0d6z4QQdyN74JDfQ2WCyi8CFDUM4CaNB+ceVXdKtOrNTQcc0e+t";
-		//		String classesMd5 = "pZ3J/O+F3HXOyx8YixzvPQ==";
-		//
-		//		byte[] key2 = base64_decode("/UIGKU1FVQa+ATM2A0za7G2KI9S/CwPYjgAbc67v7ep42eO/WeTLx1lb1cHwxpsEgF4+PmYpLd2YpGUdX/A2JQitsHzDwgcdBpUf7psX1BU=");
-		//		ByteArrayOutputStream data = new ByteArrayOutputStream();
-		//		data.write(base64_decode(signature));
-		//		data.write(base64_decode(classesMd5));
-		//		data.write(phone.getBytes());
-		//
-		//		ByteArrayOutputStream opad = new ByteArrayOutputStream();
-		//		ByteArrayOutputStream ipad = new ByteArrayOutputStream();
-		//		for(int i = 0; i < 64; ++i) {
-		//			opad.write(0x5c ^ key2[i]);
-		//			ipad.write(0x36 ^ key2[i]);
-		//		}
-		//		ipad.write(data.toByteArray());
-		//		opad.write(hash("SHA-1", ipad.toByteArray()));
-		//
-		//		byte[] output = hash("SHA-1", opad.toByteArray());
-		//
-		//		return base64_encode(output);	
 		return WhatsMediaUploader.md5("PdA2DJyKoUrwLw1Bg6EIhzh502dF9noR9uFCllGk1419900749520"+phone);
 	}
 
@@ -736,7 +715,9 @@ public class WhatsApi {
 			for(String ext : allowedExtensions) {
 				list.add(ext);
 			}
-			return sendCheckAndSendMedia(file, size, to, "audio", list, storeURLmedia);
+			MediaInfo info = new MediaInfo();
+			info.setMediaFile(file);
+			return sendCheckAndSendMedia(info, size, to, "audio", list, null);
 		} catch (Exception e) {
 			log.warn("Exception sending audio",e);
 			throw new WhatsAppException(e);
@@ -763,8 +744,9 @@ public class WhatsApi {
 	 * @throws DecodeException 
 	 * @throws InvalidKeyException 
 	 */
-	private JSONObject sendCheckAndSendMedia(File file, int maxSize, String to,
-			String type, List<String> allowedExtensions, boolean storeURLmedia) throws WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
+	private JSONObject sendCheckAndSendMedia(MediaInfo info, int maxSize, String to,
+			String type, List<String> allowedExtensions, String caption) throws WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
+		File file = info.getMediaFile();
 		if(file.length() <= maxSize && file.isFile() && file.length() > 0) {
 			String fileName = file.getName();
 			int lastIndexOf = fileName.lastIndexOf('.')+1;
@@ -773,12 +755,10 @@ public class WhatsApi {
 				mediaInfo = null;
 				String b64hash = base64_encode(hash_file("sha256", file, true));
 				//request upload
-				sendRequestFileUpload(b64hash, type, file, to);
-				//                processTempMediaFile(storeURLmedia);
+				sendRequestFileUpload(b64hash, type, info, to, caption);
 				return mediaInfo;
 			} else {
 				//Not allowed file type.
-				//                processTempMediaFile(storeURLmedia);
 				return new JSONObject("{\"error\":\"Invalid media type "+extension+"\"}");
 			}
 		} else {
@@ -787,20 +767,20 @@ public class WhatsApi {
 		}
 	}
 
-	private void sendRequestFileUpload(String b64hash, String type, File file,
-			String to) throws WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
+	private void sendRequestFileUpload(String b64hash, String type, MediaInfo file,
+			String to, String caption) throws WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		mediaFile = file;
 		Map<String,String> hash = new HashMap<String, String>();
-		hash.put("xmlns", "w:m");
 		hash.put("hash", b64hash);
 		hash.put("type", type);
-		hash.put("size", Long.toString(file.length()));
+		hash.put("size", Long.toString(file.getMediaFile().length()));
 		ProtocolNode mediaNode = new ProtocolNode("media", hash, null, null);
 		hash = new HashMap<String, String>();
 		String id = createMsgId("upload");
 		hash.put("id", id);
 		hash.put("to", WHATSAPP_SERVER);
 		hash.put("type", "set");
+		hash.put("xmlns", "w:m");
 		ArrayList<ProtocolNode> list = new ArrayList<ProtocolNode>();
 		list.add(mediaNode);
 		ProtocolNode node = new ProtocolNode("iq", hash, list, null);
@@ -812,10 +792,13 @@ public class WhatsApi {
 		 *	}
 		 *
 		 */
+		String messageId = createMsgId("message");
 		Map<String,Object> map = new HashMap<String, Object>();
 		map.put("messageNode", node);
 		map.put("file", file);
 		map.put("to", to);
+		map.put("message_id", messageId);
+		map.put("caption", caption);
 		mediaQueue.put(id,map);
 		sendNode(node);
 		waitForServer(id);
@@ -866,7 +849,7 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 */
 	public JSONObject sendMessageImage(String to, File image, File preview) throws WhatsAppException {
-		return sendMessageImage(to,image, preview,false);
+		return sendMessageImage(to,image, preview,"");
 	}
 
 	/**
@@ -880,7 +863,7 @@ public class WhatsApi {
 	 * @return JSONObject 
 	 * @throws WhatsAppException 
 	 */
-	public JSONObject sendMessageImage(String to, File image, File preview, boolean storeURLmedia) throws WhatsAppException {
+	public JSONObject sendMessageImage(String to, File image, File preview, String caption) throws WhatsAppException {
 
 		String[] allowedExtensions = { "jpg","jpeg","gif","png" };
 		int size = 5 * 1024 * 1024; // Easy way to set maximum file size for this media type.
@@ -890,7 +873,11 @@ public class WhatsApi {
 			for(String ext : allowedExtensions) {
 				list.add(ext);
 			}
-			return sendCheckAndSendMedia(image, size, to, "image", list, storeURLmedia);
+			MediaInfo info = new MediaInfo();
+			info.setMediaFile(image);
+			info.setPreviewFile(preview);
+			info.setCaption(caption);
+			return sendCheckAndSendMedia(info, size, to, "image", list, caption);
 		} catch (Exception e) {
 			log.warn("Exception sending audio",e);
 			throw new WhatsAppException(e);
@@ -930,20 +917,6 @@ public class WhatsApi {
 	}
 
 	/**
-	 * Send a video to the user/group without keeping a copy
-	 *
-	 * @param  String to
-	 *   The recipient to send.
-	 * @param String filepath
-	 *   The url/uri to the MP4/MOV video.
-	 * @return boolean
-	 * @throws WhatsAppException 
-	 */
-	public boolean sendMessageVideo(String to, String filepath) throws WhatsAppException {
-		return sendMessageVideo(to, filepath,false);
-	}
-
-	/**
 	 * Send a video to the user/group.
 	 *
 	 * @param  String to
@@ -954,9 +927,24 @@ public class WhatsApi {
 	 * @return boolean
 	 * @throws WhatsAppException 
 	 */
-	public boolean sendMessageVideo(String to, String filepath, boolean storeURLmedia) throws WhatsAppException {
-		//TODO implement this
-		throw new WhatsAppException("Not yet implemented");
+	public JSONObject sendMessageVideo(String to, File media, File preview, String caption) throws WhatsAppException {
+		String[] allowedExtensions = { "3gp", "mp4", "mov", "avi" };
+		int size = 20 * 1024 * 1024; // Easy way to set maximum file size for this media type.
+		try {
+			// This list should be done better or at least cached!
+			List<String> list = new ArrayList<String>();
+			for(String ext : allowedExtensions) {
+				list.add(ext);
+			}
+			MediaInfo info = new MediaInfo();
+			info.setMediaFile(media);
+			info.setPreviewFile(preview);
+			info.setCaption(caption);
+			return sendCheckAndSendMedia(info, size, to, "video", list, caption);
+		} catch (Exception e) {
+			log.warn("Exception sending video",e);
+			throw new WhatsAppException(e);
+		}
 	}
 
 	/**
@@ -1801,7 +1789,7 @@ public class WhatsApi {
 			mediaInfo = createMediaInfo(duplicate);
 		} else {
 			//upload new file
-			JSONObject json = WhatsMediaUploader.pushFile(node, messageNode, mediaFile, phoneNumber);
+			JSONObject json = WhatsMediaUploader.pushFile(node, messageNode, mediaFile.getMediaFile(), phoneNumber);
 
 			if (json == null) {
 				//failed upload
@@ -1829,18 +1817,21 @@ public class WhatsApi {
 		mediaAttribs.put("xmlns","urn:xmpp:whatsapp:mms");
 		mediaAttribs.put("type",filetype);
 		mediaAttribs.put("url",url);
+		mediaAttribs.put("encoding","raw");
 		mediaAttribs.put("file",filename);
 		mediaAttribs.put("size",filesize);
+		if(messageNode.containsKey("caption") && !((String)messageNode.get("caption")).isEmpty()) {
+			mediaAttribs.put("caption", ((String)messageNode.get("caption")));
+		}
 
-		String filepath = (String) messageNode.get("filePath");
 		to = (String) messageNode.get("to");
 
 		byte[] icon = null;
 		if(filetype.equals("image")) {
-			icon = createIcon(filepath);
+			icon = readFile(mediaFile.getPreviewFile());
 		}
 		if(filetype.equals("video")) {
-			icon = videoThumbnail(filepath);
+			icon = readFile(mediaFile.getPreviewFile());
 		}
 
 		ProtocolNode mediaNode = new ProtocolNode("media", mediaAttribs, null, icon);
@@ -1997,9 +1988,12 @@ public class WhatsApi {
 
 		//do not send received confirmation if sender is yourself
 		if(node.getAttribute("type").equals("text")) {
-			sendMessageReceived(node,null);
+			sendMessageReceived(node,"read");
 		}
-
+		if(node.getAttribute("type").equals("media")) {
+			processMediaMessage(node);
+			sendMessageReceived(node, "read");
+		}
 		// check if it is a response to a status request
 		String[] foo = node.getAttribute("from").split("@");
 		if (foo.length > 1 && foo[1].equals("s.us") && node.getChild("body") != null) {
@@ -2016,7 +2010,7 @@ public class WhatsApi {
 			sendNextMessage();
 		}
 
-		if (processor != null && node.hasChild("body")) {
+		if (processor != null && (node.hasChild("body") || node.hasChild("media"))) {
 			processor.processMessage(node);
 		}
 
@@ -2209,6 +2203,11 @@ public class WhatsApi {
 		}
 	}
 
+	private void processMediaMessage(ProtocolNode node) {
+		// TODO Auto-generated method stub
+		
+	}
+
 	private void sendNextMessage() throws IOException, WhatsAppException {
 		if (outQueue.size() > 0) {
 			ProtocolNode msgnode = outQueue.remove(0);
@@ -2247,11 +2246,11 @@ public class WhatsApi {
 				//Read header first
 				int ret = stream.read(buf);
 				if(ret == 3) {
-//					log.debug("Read header: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
-					int treeLength = (buf[0] & 0x0f) << 16;
-					treeLength += buf[1] << 8;
-					treeLength += buf[2] << 0;
-//					log.debug("Tree length = "+treeLength);
+					log.debug("Read header: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
+					int treeLength = ((buf[0] & 0x0f) & 0xFF) << 16;
+					treeLength += (buf[1] & 0xFF) << 8;
+					treeLength += (buf[2] & 0xFF) << 0;
+					log.debug("Tree length = "+treeLength);
 					out.write(buf);
 					buf = new byte[treeLength];
 					int read = 0;
@@ -2486,7 +2485,14 @@ public class WhatsApi {
 		Date start = new Date();
 		Date now = start;
 		while (!checkReceivedId(id) && (now.getTime() - start.getTime()) < 5000) {
-			pollMessages();
+			if(poller.isAlive()) {
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+				}
+			} else {
+				pollMessages();
+			}
 			now = new Date();
 		}
 		if(log.isDebugEnabled()) {
