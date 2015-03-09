@@ -6,6 +6,7 @@ public enum ProtocolTag {
 	SUCCESS("success"), FAILURE("failure"), MESSAGE("message"), PRESENCE("presence"), 
 	IB("ib"), IQ("iq"),PING("ping"),QUERY("query"), 
 	DIRTY("dirty"), OFFLINE("offline"),
+	NOTIFICATION("notification"),CHATSTATE("chatstate"),
 	UNKNOWN("unknown"), STREAM_ERROR("stream:error");
 	
 	private String tag;

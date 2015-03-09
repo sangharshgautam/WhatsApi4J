@@ -4,6 +4,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import net.sumppen.whatsapi4j.tools.BinHex;
+
 public class ProtocolNode {
 	
 	private Map<String, String> attributes;
@@ -102,7 +104,7 @@ public class ProtocolNode {
 		sb.append(gt);
 		if (data != null && data.length > 0) {
 			if(data.length < 1024) {
-				sb.append(bin2hex(data));
+				sb.append(BinHex.bin2hex(data));
 			} else {
 				//raw data
 		        sb.append(data.length); 
@@ -120,16 +122,7 @@ public class ProtocolNode {
 		return sb.toString();
 	}
 
-    public static String bin2hex(byte[] bin) {
-        StringBuilder sb = new StringBuilder();
-        for(int i=0; i< bin.length ;i++)
-        {
-            sb.append(Integer.toString((bin[i] & 0xff) + 0x100, 16).substring(1));
-        }
-        return sb.toString();
-	}
-
-	/**
+    /**
      * @param String needle
      * @return boolean
      */

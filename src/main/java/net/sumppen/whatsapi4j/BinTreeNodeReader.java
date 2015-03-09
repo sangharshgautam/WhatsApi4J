@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
+import net.sumppen.whatsapi4j.tools.BinHex;
+
 import org.apache.log4j.Logger;
 
 public class BinTreeNodeReader {
@@ -40,7 +42,7 @@ public class BinTreeNodeReader {
 	public ProtocolNode nextTree(byte[] readData) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, InvalidKeyException, NoSuchAlgorithmException, DecodeException {
 		if(readData != null) {
 			input = readData;
-//			log.debug("Input ="+ProtocolNode.bin2hex(readData));
+//			log.debug("Input ="+BinHex.bin2hex(readData));
 		}
 		
 		int firstByte  = peekInt8(0);
@@ -49,7 +51,7 @@ public class BinTreeNodeReader {
 		if(stanzaSize > input.length) {
 			log.info("fb:"+firstByte+", sf="+stanzaFlag+", sz="+stanzaSize);
 			if(input != null && input.length > 0) {
-				log.debug("Input:"+ProtocolNode.bin2hex(input));
+				log.debug("Input:"+BinHex.bin2hex(input));
 			}
 			throw new IncompleteMessageException("incomplete message: "+stanzaSize+">"+input.length);
 		}
@@ -58,6 +60,7 @@ public class BinTreeNodeReader {
 	    	if (key != null) {
 	    		try {
 	    			byte[] decoded = key.decode(input, stanzaSize-4, 0, stanzaSize-4);
+//	    			log.debug("Input decoded ="+BinHex.bin2hex(decoded));
 	    			ByteArrayOutputStream s = new ByteArrayOutputStream();
 	    			s.write(Arrays.copyOf(decoded, stanzaSize-4));
 	    			s.write(Arrays.copyOfRange(input, stanzaSize, input.length));
@@ -65,7 +68,7 @@ public class BinTreeNodeReader {
 	    			
 	    		} catch (DecodeException e) {
 	    			log.info("Decode failed");
-					log.debug("Input ="+ProtocolNode.bin2hex(Arrays.copyOf(readData,stanzaSize+3)));
+					log.debug("Input ="+BinHex.bin2hex(Arrays.copyOf(readData,stanzaSize+3)));
 					throw e;
 	    		}
 	        } else {
@@ -171,7 +174,7 @@ public class BinTreeNodeReader {
 
 	      int ignoreLastNibble = (b & 0x80);
 	      int size = (b & 0x7f);
-	      int nrOfNibbles = size * 2 - ignoreLastNibble;
+	      int nrOfNibbles = size * 2 - (ignoreLastNibble>0?1:0);
 
 	      byte[] data = fillArray(size);
 //	      log.debug(ProtocolNode.bin2hex(data));

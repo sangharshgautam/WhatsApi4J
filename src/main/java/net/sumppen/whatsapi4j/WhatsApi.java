@@ -29,13 +29,13 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
+
+import net.sumppen.whatsapi4j.tools.BinHex;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
@@ -51,9 +51,6 @@ import org.json.JSONObject;
  */
 public class WhatsApi {
 
-	private static final int READ_DATA_WAIT = 250;
-	private final String MEDIA_FOLDER = "media";                           // The relative folder to store received media files
-	private final String PICTURES_FOLDER = "pictures";                     // The relative folder to store picture files
 	private final int PORT = 443;                                      // The port of the WhatsApp server.
 	private final int TIMEOUT_SEC = 2;                                  // The timeout for the connection with the WhatsApp servers.
 	private final String WHATSAPP_CHECK_HOST = "v.whatsapp.net/v2/exist";  // The check credentials host.
@@ -62,7 +59,6 @@ public class WhatsApi {
 	private final String WHATSAPP_REGISTER_HOST = "v.whatsapp.net/v2/register"; // The register code host.
 	private final String WHATSAPP_REQUEST_HOST = "v.whatsapp.net/v2/code";      // The request code host.
 	private final String WHATSAPP_SERVER = "s.whatsapp.net";               // The hostname used to login/send messages.
-	private final String WHATSAPP_UPLOAD_HOST = "https://mms.whatsapp.net/client/iphone/upload.php"; // The upload host.
 	private final String WHATSAPP_DEVICE = "iPhone";                      // The device name.
 	private final String WHATSAPP_VER = "2.11.14";                // The WhatsApp version.
 	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.12.61 S40Version/14.26 Device/Nokia302";// User agent used in request/registration code.
@@ -92,7 +88,6 @@ public class WhatsApi {
 	private MediaInfo mediaFile;
 	private JSONObject mediaInfo;
 	private MessageProcessor processor = null;
-	private Lock pollLock = new ReentrantLock();
 	private MessagePoller poller;
 
 	public WhatsApi(String username, String identity, String nickname) throws NoSuchAlgorithmException, WhatsAppException {
@@ -321,7 +316,9 @@ public class WhatsApi {
 	 * Disconnect from the WhatsApp network.
 	 */
 	public void disconnect() {
-		poller.setRunning(false);
+		if(poller != null) {
+			poller.setRunning(false);
+		}
 		if (socket != null && socket.isConnected()) {
 			try {
 				socket.close();
@@ -815,14 +812,18 @@ public class WhatsApi {
 		md = MessageDigest.getInstance("SHA-256");
 		FileInputStream fis = new FileInputStream(file);
 
-		byte[] dataBytes = new byte[1024];
+		try {
+			byte[] dataBytes = new byte[1024];
 
-		int nread = 0; 
-		while ((nread = fis.read(dataBytes)) != -1) {
-			md.update(dataBytes, 0, nread);
-		};
-		byte[] mdbytes = md.digest();        
-		return mdbytes;
+			int nread = 0; 
+			while ((nread = fis.read(dataBytes)) != -1) {
+				md.update(dataBytes, 0, nread);
+			};
+			byte[] mdbytes = md.digest();        
+			return mdbytes;
+		} finally {
+			fis.close();
+		}
 	}
 
 	/**
@@ -1056,7 +1057,7 @@ public class WhatsApi {
 				hash.put("xmlns","w:profile:picture");
 				List<ProtocolNode> arr = new LinkedList<ProtocolNode>();
 				arr.add(picture);
-				//				arr.add(thumb);
+				arr.add(thumb);
 				ProtocolNode node = new ProtocolNode("iq", hash, arr, null);
 
 				sendNode(node);
@@ -1566,6 +1567,12 @@ public class WhatsApi {
 			case IB:
 				processIb(node);
 				break;
+			case NOTIFICATION:
+				processNotification(node);
+				break;
+			case CHATSTATE:
+				processChatState(node);
+				break;
 			case STREAM_ERROR:
 				throw new WhatsAppException("stream:error received: ");
 			case PING:
@@ -1581,6 +1588,93 @@ public class WhatsApi {
 			}
 			node = reader.nextTree(null);
 		}
+	}
+
+	private void processChatState(ProtocolNode node) throws WhatsAppException {
+		log.debug("Processing CHATSTATE");
+		if (node.hasChild("composing")) {
+			eventManager().fireMessageComposing(
+					phoneNumber,
+					node.getAttribute("from"),
+					node.getAttribute("id"),
+					node.getAttribute("type"),
+					node.getAttribute("t")
+					);
+		}
+		if (node.hasChild("paused")) {
+			eventManager().fireMessagePaused(
+					phoneNumber,
+					node.getAttribute("from"),
+					node.getAttribute("type"),
+					node.getAttribute("id"),
+					node.getAttribute("t")
+					);
+		}
+	}
+
+	private void processNotification(ProtocolNode node) throws WhatsAppException {
+		String name = node.getAttribute("notify");
+		String type = node.getAttribute("type");
+		log.debug("Processing "+type+" NOTIFICATION: "+name);
+		if(type.equals("status")) {
+
+		}
+		if(type.equals("picture")) {
+
+		}
+		if(type.equals("contacts")) {
+
+		}
+		if(type.equals("encrypt")) {
+
+		}
+		if(type.equals("w:gp2")) {
+			if(node.hasChild("create")) {
+
+			}
+			if(node.hasChild("add")) {
+
+			}
+			if(node.hasChild("remove")) {
+
+			}
+			if(node.hasChild("participant")) {
+
+			}
+			if(node.hasChild("subject")) {
+
+			}
+
+		}
+		if(type.equals("account")) {
+
+		}
+		if(type.equals("features")) {
+
+		}
+		sendNotificationAck(node);
+	}
+
+	private void sendNotificationAck(ProtocolNode node) throws WhatsAppException {
+		String from = node.getAttribute("from");
+		String to = node.getAttribute("to");
+		String participant = node.getAttribute("participant");
+		String id = node.getAttribute("id");
+		String type = node.getAttribute("type");
+
+		Map<String,String> attributes = new HashMap<String, String>();
+		if (to != null && !to.isEmpty())
+			attributes.put("from",to);
+		if (participant != null && !participant.isEmpty())
+			attributes.put("participant",participant);
+		attributes.put("to", from);
+		attributes.put("class", "notification");
+		attributes.put("id", id);
+		attributes.put("type", type);
+
+		ProtocolNode ack = new ProtocolNode("ack", attributes, null, null);
+
+		sendNode(ack);	
 	}
 
 	private void processReceipt(ProtocolNode node) throws WhatsAppException {
@@ -1873,16 +1967,6 @@ public class WhatsApi {
 		return info;
 	}
 
-	private byte[] videoThumbnail(String filepath) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private byte[] createIcon(String filepath) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	private void sendPong(String msgid) throws IOException, WhatsAppException {
 		Map<String,String> messageHash = new LinkedHashMap<String,String>();
 		messageHash.put("to",WHATSAPP_SERVER);
@@ -2014,24 +2098,6 @@ public class WhatsApi {
 			processor.processMessage(node);
 		}
 
-		if (node.hasChild("composing")) {
-			eventManager().fireMessageComposing(
-					phoneNumber,
-					node.getAttribute("from"),
-					node.getAttribute("id"),
-					node.getAttribute("type"),
-					node.getAttribute("t")
-					);
-		}
-		if (node.hasChild("paused")) {
-			eventManager().fireMessagePaused(
-					phoneNumber,
-					node.getAttribute("from"),
-					node.getAttribute("type"),
-					node.getAttribute("id"),
-					node.getAttribute("t")
-					);
-		}
 		if (node.hasChild("notify") && node.getChild(0).getAttribute("name") != null &&
 				node.getChild(0).getAttribute("name").length() < 1 && node.getChild("body") != null) {
 			String author = node.getAttribute("author");
@@ -2203,9 +2269,27 @@ public class WhatsApi {
 		}
 	}
 
-	private void processMediaMessage(ProtocolNode node) {
+	private void processMediaMessage(ProtocolNode node) throws WhatsAppException {
 		// TODO Auto-generated method stub
-		
+		if(node.getChild(0).getAttribute("type").equals("image") ) {
+			String msgId = createMsgId("ack-media");
+
+			Map<String,String> attributes = new HashMap<String,String>();
+			attributes.put("url", node.getChild(0).getAttribute("url"));
+			ProtocolNode ackNode = new ProtocolNode("ack",attributes, null, null);
+
+			Map<String,String> iqAttributes = new HashMap<String,String>();
+			iqAttributes.put("id",msgId);
+			iqAttributes.put("xmlns", "w:m");
+			iqAttributes.put("type", "set");
+			iqAttributes.put("to", WHATSAPP_SERVER);
+			List<ProtocolNode> nodeList = new LinkedList<ProtocolNode>();
+			nodeList.add(ackNode);
+			ProtocolNode iqNode = new ProtocolNode("iq",iqAttributes, nodeList, null);
+
+			sendNode(iqNode);
+		}
+
 	}
 
 	private void sendNextMessage() throws IOException, WhatsAppException {
@@ -2224,7 +2308,7 @@ public class WhatsApi {
 		messageHash.put("to",msg.getAttribute("from"));
 		if(type != null && type.equals("read"))
 			messageHash.put("type","type");
-		
+
 		messageHash.put("id",msg.getAttribute("id"));
 		messageHash.put("t",Long.toString(new Date().getTime()));
 		ProtocolNode messageNode = new ProtocolNode("receipt", messageHash, null, null);
@@ -2246,18 +2330,18 @@ public class WhatsApi {
 				//Read header first
 				int ret = stream.read(buf);
 				if(ret == 3) {
-					log.debug("Read header: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
+					//					log.debug("Read header: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
 					int treeLength = ((buf[0] & 0x0f) & 0xFF) << 16;
 					treeLength += (buf[1] & 0xFF) << 8;
 					treeLength += (buf[2] & 0xFF) << 0;
-					log.debug("Tree length = "+treeLength);
+					//					log.debug("Tree length = "+treeLength);
 					out.write(buf);
 					buf = new byte[treeLength];
 					int read = 0;
 					while(read < treeLength) {
 						ret = stream.read(buf);
 						if(ret > 0) {
-//							log.debug("Read content: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
+							//							log.debug("Read content: "+ProtocolNode.bin2hex(Arrays.copyOf(buf, ret)));
 							out.write(Arrays.copyOf(buf, ret));
 							read += ret;
 						} else {
@@ -2518,7 +2602,7 @@ public class WhatsApi {
 	}
 
 	public synchronized void pollMessages() throws InvalidKeyException, NoSuchAlgorithmException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, DecodeException {
-//		log.debug("Polling messages");
+		//		log.debug("Polling messages");
 		processInboundData(readData());
 	}
 
@@ -2597,31 +2681,7 @@ public class WhatsApi {
 	}
 
 	public void setChallengeData(String challenge) {
-		challengeData = hex2bin(challenge);
-	}
-
-	static byte[] hex2bin(String challenge) {
-		byte[] bytes = null;
-
-		//hexString = removeSpaces(hexString);        
-		if ( challenge.indexOf( " " ) < 0 )
-		{
-			bytes = new byte[challenge.length()/2];
-			for ( int i=0; i<challenge.length(); i+=2 ) 
-			{
-				bytes[i/2]=(byte) Integer.parseInt( challenge.substring(i,i+2), 16);
-			}
-		}
-		else
-		{
-			String[] parts = challenge.split(" ");
-			bytes = new byte[parts.length];
-			for ( int i=0; i<parts.length; i++ ) 
-			{
-				bytes[i] = (byte) Integer.parseInt( parts[i], 16);
-			}
-		}
-		return bytes;
+		challengeData = BinHex.hex2bin(challenge);
 	}
 
 	public void setPassword(String pw) {

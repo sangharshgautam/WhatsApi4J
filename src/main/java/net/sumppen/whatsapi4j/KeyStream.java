@@ -1,7 +1,6 @@
 package net.sumppen.whatsapi4j;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -50,7 +49,6 @@ public class KeyStream {
 
 	public byte[] decode(byte[] data, int macOffset, int offset, int length) throws DecodeException {
 		byte[] mac;
-		log.debug("Decode seq: "+seq);
 		try {
 			mac = computeMac(data, offset, length);
 		} catch (Exception e) {
@@ -61,8 +59,6 @@ public class KeyStream {
 			int foo = data[macOffset + i];
 			int bar = mac[i];
 			if (foo != bar) {
-				log.debug("mac: "+ProtocolNode.bin2hex(mac));
-				log.debug("seq: "+ (seq-1));
 				throw new DecodeException("MAC mismatch: "+foo+" != "+bar);
 			}
 		}
@@ -82,7 +78,6 @@ public class KeyStream {
 				(byte)(seq >> 8),
 				(byte)(seq)
 		};
-		log.debug("Array:" + ProtocolNode.bin2hex(array));
 		seq++;
 
 		byte[] digest = mac.doFinal(array);
