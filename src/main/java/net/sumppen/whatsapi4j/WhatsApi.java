@@ -1134,8 +1134,22 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 */
 	public void sendStatusUpdate(String txt) throws WhatsAppException {
-		//TODO implement this
 
+		ProtocolNode child = new ProtocolNode("status", null, null, txt.getBytes());
+		Map<String, String> map = new LinkedHashMap<String, String>();
+		map.put("to", "s.whatsapp.net");
+		map.put("type", "set");
+		map.put("id", createMsgId("sendstatus"));
+		map.put("xmlns", "status");
+		ArrayList<ProtocolNode> nodes = new ArrayList<ProtocolNode>();
+		nodes.add(child);
+		ProtocolNode node = new ProtocolNode("iq", map, nodes, null);
+		try {
+			sendNode(node);
+			eventManager().fireSendStatusUpdate(phoneNumber, txt);
+		} catch (Exception e) {
+			throw new WhatsAppException("Failed to update status");
+		}
 	}
 
 	/**
