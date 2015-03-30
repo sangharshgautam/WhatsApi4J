@@ -58,7 +58,7 @@ public class WhatsApi {
 	private final String WHATSAPP_HOST = "c.whatsapp.net";                 // The hostname of the WhatsApp server.
 	private final String WHATSAPP_REGISTER_HOST = "v.whatsapp.net/v2/register"; // The register code host.
 	private final String WHATSAPP_REQUEST_HOST = "v.whatsapp.net/v2/code";      // The request code host.
-	private final String WHATSAPP_SERVER = "s.whatsapp.net";               // The hostname used to login/send messages.
+	public static final String WHATSAPP_SERVER = "s.whatsapp.net";               // The hostname used to login/send messages.
 	private final String WHATSAPP_DEVICE = "iPhone";                      // The device name.
 	private final String WHATSAPP_VER = "2.11.14";                // The WhatsApp version.
 	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.12.61 S40Version/14.26 Device/Nokia302";// User agent used in request/registration code.

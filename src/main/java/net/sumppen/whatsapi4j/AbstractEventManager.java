@@ -27,7 +27,7 @@ public abstract class AbstractEventManager implements EventManager {
 	public static final String FROM = "from";
 	public static final String TYPE = "type";
 	public static final String RESULT = "result";
-	private static final String TIME = "time";
+	public static final String TIME = "time";
 
 	public abstract void fireEvent(String event, Map<String, String> eventData);
 
