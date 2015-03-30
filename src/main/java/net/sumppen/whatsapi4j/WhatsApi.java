@@ -1668,6 +1668,13 @@ public class WhatsApi {
 		}
 		sendNotificationAck(node);
 	}
+	
+	private void addServerReceivedId(String receivedId) {
+		
+		synchronized(serverReceivedId) {
+			serverReceivedId.add(receivedId);
+		}
+	}
 
 	private void sendNotificationAck(ProtocolNode node) throws WhatsAppException {
 		String from = node.getAttribute("from");
@@ -1693,7 +1700,7 @@ public class WhatsApi {
 
 	private void processReceipt(ProtocolNode node) throws WhatsAppException {
 		log.debug("Processing RECEIPT");
-		serverReceivedId.add(node.getAttribute("id"));
+		addServerReceivedId(node.getAttribute("id"));
 		eventManager().fireMessageReceivedClient(
 				phoneNumber,
 				node.getAttribute("from"),
@@ -1716,7 +1723,7 @@ public class WhatsApi {
 
 	private void processAck(ProtocolNode node) {
 		log.debug("Processing ACK");
-		serverReceivedId.add(node.getAttribute("id"));
+		addServerReceivedId(node.getAttribute("id"));
 	}
 
 	private void processIb(ProtocolNode node) throws IOException, WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, JSONException, NoSuchAlgorithmException {
@@ -1751,7 +1758,7 @@ public class WhatsApi {
 			if(log.isDebugEnabled()) {
 				log.debug("processIq: setting received id to "+node.getAttribute("id"));
 			}
-			serverReceivedId.add(node.getAttribute("id"));
+			addServerReceivedId(node.getAttribute("id"));
 			if (node.getChild(0) != null &&
 					node.getChild(0).getTag().equals(ProtocolTag.QUERY)) {
 				if (node.getChild(0).getAttribute("xmlns").equals("jabber:iq:privacy")) {
@@ -1845,7 +1852,7 @@ public class WhatsApi {
 
 		}
 		if (node.getTag().equals("iq") && node.getAttribute("type").equals("error")) {
-			serverReceivedId.add(node.getAttribute("id"));
+			addServerReceivedId(node.getAttribute("id"));
 		}
 
 	}
@@ -2249,7 +2256,7 @@ public class WhatsApi {
 			if(log.isDebugEnabled()) {
 				log.debug("processMessage: setting received id to "+node.getAttribute("id"));
 			}
-			serverReceivedId.add(node.getAttribute("id"));
+			addServerReceivedId(node.getAttribute("id"));
 			eventManager().fireMessageReceivedServer(
 					phoneNumber,
 					node.getAttribute("from"),
@@ -2599,20 +2606,23 @@ public class WhatsApi {
 	}
 
 	private boolean checkReceivedId(String id) {
-		if(log.isDebugEnabled()) {
-			log.debug("Checking received id ("+serverReceivedId+" against "+id);
-		}
-		if(serverReceivedId != null && serverReceivedId.contains(id)) {
+		
+		synchronized(serverReceivedId) {
 			if(log.isDebugEnabled()) {
-				log.debug("received id matched");
+				log.debug("Checking received id ("+serverReceivedId+" against "+id);
 			}
-			serverReceivedId.remove(id);
-			return true;
+			if(serverReceivedId != null && serverReceivedId.contains(id)) {
+				if(log.isDebugEnabled()) {
+					log.debug("received id matched");
+				}
+				serverReceivedId.remove(id);
+				return true;
+			}
+			if(log.isDebugEnabled()) {
+				log.debug("received id did NOT match");
+			}
+			return false;
 		}
-		if(log.isDebugEnabled()) {
-			log.debug("received id did NOT match");
-		}
-		return false;
 	}
 
 	public synchronized void pollMessages() throws InvalidKeyException, NoSuchAlgorithmException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, DecodeException {
