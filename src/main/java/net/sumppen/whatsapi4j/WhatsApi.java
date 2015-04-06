@@ -89,6 +89,7 @@ public class WhatsApi {
 	private JSONObject mediaInfo;
 	private MessageProcessor processor = null;
 	private MessagePoller poller;
+	private String lastSendMsgId;
 
 	public WhatsApi(String username, String identity, String nickname) throws NoSuchAlgorithmException, WhatsAppException {
 		writer = new BinTreeNodeWriter();
@@ -753,6 +754,11 @@ public class WhatsApi {
 				String b64hash = base64_encode(hash_file("sha256", file, true));
 				//request upload
 				sendRequestFileUpload(b64hash, type, info, to, caption);
+				
+				if(mediaInfo == null){
+					lastSendMsgId = null;					
+				}
+				
 				return mediaInfo;
 			} else {
 				//Not allowed file type.
@@ -1856,6 +1862,10 @@ public class WhatsApi {
 		}
 
 	}
+	
+	public String getLastSendMsgId(){
+		return this.lastSendMsgId;
+	}
 
 	/**
 	 * Process media upload response
@@ -2583,13 +2593,13 @@ public class WhatsApi {
 				messageHash.get("id"),
 				node
 				);
-		return messageHash.get("id");
+		return lastSendMsgId = messageHash.get("id");
 	}
 
 	private void waitForServer(String id) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		Date start = new Date();
 		Date now = start;
-		while (!checkReceivedId(id) && (now.getTime() - start.getTime()) < 5000) {
+		while (!checkReceivedId(id) && (now.getTime() - start.getTime()) < 10000) {
 			if(poller.isAlive()) {
 				try {
 					Thread.sleep(100);
