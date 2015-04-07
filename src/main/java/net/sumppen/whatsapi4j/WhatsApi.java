@@ -2597,9 +2597,8 @@ public class WhatsApi {
 	}
 
 	private void waitForServer(String id) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
-		Date start = new Date();
-		Date now = start;
-		while (!checkReceivedId(id) && (now.getTime() - start.getTime()) < 10000) {
+		long start = System.currentTimeMillis();
+		while (!checkReceivedId(id) && (System.currentTimeMillis() - start) < 10000) {
 			if(poller.isAlive()) {
 				try {
 					Thread.sleep(100);
@@ -2608,7 +2607,6 @@ public class WhatsApi {
 			} else {
 				pollMessages();
 			}
-			now = new Date();
 		}
 		if(log.isDebugEnabled()) {
 			log.debug("waitForServer done waiting for "+id);
