@@ -1,20 +1,17 @@
 package net.sumppen.whatsapi4j;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.log4j.Logger;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MediaType;
+import java.io.*;
 import java.math.BigInteger;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -100,8 +97,9 @@ public class WhatsApi {
 	private MessageProcessor processor = null;
 	private MessagePoller poller;
 	private String lastSendMsgId;
+    private Proxy proxy;
 
-	public WhatsApi(String username, String identity, String nickname) throws NoSuchAlgorithmException, WhatsAppException {
+    public WhatsApi(String username, String identity, String nickname) throws NoSuchAlgorithmException, WhatsAppException {
 		writer = new BinTreeNodeWriter();
 		reader = new BinTreeNodeReader();
 		this.name = nickname;
@@ -309,11 +307,25 @@ public class WhatsApi {
 		return mdbytes;	
 	}
 
-	/**
+    public void setProxy(Proxy proxy) {
+        this.proxy = proxy;
+    }
+
+    public Proxy getProxy() {
+        return proxy;
+    }
+
+    /**
 	 * Connect (create a socket) to the WhatsApp network.
 	 */
 	public boolean connect() throws UnknownHostException, IOException {
-		socket = new Socket(WHATSAPP_HOST, PORT);
+        if (proxy==null) {
+            socket = new Socket(WHATSAPP_HOST, PORT);
+        } else {
+            socket = new Socket(proxy);
+            SocketAddress socketAddress = new InetSocketAddress(WHATSAPP_HOST, PORT);
+            socket.connect(socketAddress);
+        }
 		if(socket.isConnected()) {
 			socket.setSoTimeout(TIMEOUT_SEC*1000);
 			return true;
