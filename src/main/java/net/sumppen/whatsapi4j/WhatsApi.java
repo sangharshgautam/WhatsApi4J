@@ -622,8 +622,26 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 */
 	public void sendGetProfilePicture(String number, boolean large) throws WhatsAppException {
-		//TODO implement this
-		throw new WhatsAppException("Not yet implemented");
+		Map<String, String> map = new LinkedHashMap<String, String>();
+		map.put("type", large ? "image" : "preview");
+		ProtocolNode picture = new ProtocolNode("picture", map, null, null);
+		
+		map = new LinkedHashMap<String, String>();
+		map.put("id", createMsgId("getpicture"));
+		map.put("type", "get");
+		map.put("xmlns", "w:profile:picture");
+		map.put("to", getJID(number));
+		
+		List<ProtocolNode> lista = new LinkedList<ProtocolNode>();
+		lista.add(picture);
+		
+		ProtocolNode node = new ProtocolNode("iq", map, lista, null);
+		try {
+			sendNode(node);
+			waitForServer(map.get("id"));
+		} catch (Exception e) {
+			throw new WhatsAppException("Failed to get profile picture", e);
+		}
 	}
 
 	/**
