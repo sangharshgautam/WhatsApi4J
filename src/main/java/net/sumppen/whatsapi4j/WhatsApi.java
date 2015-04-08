@@ -9,6 +9,7 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
+
 import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
@@ -20,6 +21,7 @@ import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -97,9 +99,9 @@ public class WhatsApi {
 	private MessageProcessor processor = null;
 	private MessagePoller poller;
 	private String lastSendMsgId;
-    private Proxy proxy;
+	private Proxy proxy;
 
-    public WhatsApi(String username, String identity, String nickname) throws NoSuchAlgorithmException, WhatsAppException {
+	public WhatsApi(String username, String identity, String nickname) throws NoSuchAlgorithmException, WhatsAppException {
 		writer = new BinTreeNodeWriter();
 		reader = new BinTreeNodeReader();
 		this.name = nickname;
@@ -307,25 +309,25 @@ public class WhatsApi {
 		return mdbytes;	
 	}
 
-    public void setProxy(Proxy proxy) {
-        this.proxy = proxy;
-    }
+	public void setProxy(Proxy proxy) {
+		this.proxy = proxy;
+	}
 
-    public Proxy getProxy() {
-        return proxy;
-    }
+	public Proxy getProxy() {
+		return proxy;
+	}
 
-    /**
+	/**
 	 * Connect (create a socket) to the WhatsApp network.
 	 */
 	public boolean connect() throws UnknownHostException, IOException {
-        if (proxy==null) {
-            socket = new Socket(WHATSAPP_HOST, PORT);
-        } else {
-            socket = new Socket(proxy);
-            SocketAddress socketAddress = new InetSocketAddress(WHATSAPP_HOST, PORT);
-            socket.connect(socketAddress);
-        }
+		if (proxy==null) {
+			socket = new Socket(WHATSAPP_HOST, PORT);
+		} else {
+			socket = new Socket(proxy);
+			SocketAddress socketAddress = new InetSocketAddress(WHATSAPP_HOST, PORT);
+			socket.connect(socketAddress);
+		}
 		if(socket.isConnected()) {
 			socket.setSoTimeout(TIMEOUT_SEC*1000);
 			return true;
@@ -549,25 +551,25 @@ public class WhatsApi {
 	 */
 	public void getGroups() throws WhatsAppException {
 		String type = "participating";
-	       String msgID = createMsgId("getgroups");
-	        ProtocolNode child = new ProtocolNode(type, null, null, null);
-	        Map<String,String> attr = new HashMap<String, String>();
-	        attr.put("id", msgID);
-	        attr.put("type", "get");
-	        attr.put("xmlns", "w:g2");
-	        attr.put("to", WHATSAPP_GROUP_SERVER);
+		String msgID = createMsgId("getgroups");
+		ProtocolNode child = new ProtocolNode(type, null, null, null);
+		Map<String,String> attr = new HashMap<String, String>();
+		attr.put("id", msgID);
+		attr.put("type", "get");
+		attr.put("xmlns", "w:g2");
+		attr.put("to", WHATSAPP_GROUP_SERVER);
 
-	        List<ProtocolNode> children = new LinkedList<ProtocolNode>();
-	        children.add(child);
-			ProtocolNode node = new ProtocolNode("iq", attr, children, null);
+		List<ProtocolNode> children = new LinkedList<ProtocolNode>();
+		children.add(child);
+		ProtocolNode node = new ProtocolNode("iq", attr, children, null);
 
-	        sendNode(node);
-	        try {
-				waitForServer(msgID);
-			} catch (Exception e) {
-				throw new WhatsAppException("Error getting groups",e);
-			}
-	 }
+		sendNode(node);
+		try {
+			waitForServer(msgID);
+		} catch (Exception e) {
+			throw new WhatsAppException("Error getting groups",e);
+		}
+	}
 
 	/**
 	 * Send a request to get information about a specific group
@@ -674,8 +676,38 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 */
 	public void sendGroupsLeave(List<String> gjids) throws WhatsAppException {
-		//TODO implement this
-		throw new WhatsAppException("Not yet implemented");
+		String msgId = createMsgId("leavegroups");
+
+		List<ProtocolNode> nodes = new LinkedList<ProtocolNode>();
+		for (String gjid : gjids) {
+			Map<String,String> params = new HashMap<String, String>();
+			params.put("id", getJID(gjid));
+			ProtocolNode node = new ProtocolNode("group",
+					params, null, null);
+			nodes.add(node);
+		}
+
+		Map<String,String> params = new HashMap<String, String>();
+		params.put("action", "delete");
+		ProtocolNode leave = new ProtocolNode("leave",
+				params, nodes, null);
+
+		params = new HashMap<String, String>();
+		params.put("id", msgId);
+		params.put("to", WHATSAPP_GROUP_SERVER);
+		params.put("type", "set");
+		params.put("xmlns", "w:g2");
+		List<ProtocolNode> list = new LinkedList<ProtocolNode>();
+		list.add(leave);
+		ProtocolNode node = new ProtocolNode("iq",
+				params, list, null);
+
+		sendNode(node);
+		try {
+			waitForServer(msgId);
+		} catch (Exception e) {
+			throw new WhatsAppException("Failure while waiting for response", e);
+		}
 	}
 
 	/**
@@ -781,11 +813,11 @@ public class WhatsApi {
 				String b64hash = base64_encode(hash_file("sha256", file, true));
 				//request upload
 				sendRequestFileUpload(b64hash, type, info, to, caption);
-				
+
 				if(mediaInfo == null){
 					lastSendMsgId = null;					
 				}
-				
+
 				return mediaInfo;
 			} else {
 				//Not allowed file type.
@@ -1676,7 +1708,7 @@ public class WhatsApi {
 		if(type.equals("w:gp2")) {
 			List<ProtocolNode> groupList = node.getChild(0).getChildren();
 			String groupId = parseJID(node.getAttribute("from"));
-			
+
 			if(node.hasChild("create")) {
 				Event event = new Event(EventType.GROUP_CREATE, phoneNumber);
 				event.setData(groupList );
@@ -1711,9 +1743,9 @@ public class WhatsApi {
 		}
 		sendNotificationAck(node);
 	}
-	
+
 	private void addServerReceivedId(String receivedId) {
-		
+
 		synchronized(serverReceivedId) {
 			serverReceivedId.add(receivedId);
 		}
@@ -1874,7 +1906,7 @@ public class WhatsApi {
 				Event event = new Event(EventType.GET_GROUPS, phoneNumber);
 				event.setData(groupList);
 				eventManager().fireEvent(event);
-				
+
 			}
 			if(node.nodeIdContains("getgroupinfo")){
 				Event event = new Event(EventType.GET_GROUPINFO, phoneNumber);
@@ -1895,7 +1927,7 @@ public class WhatsApi {
 		}
 
 	}
-	
+
 	public String getLastSendMsgId(){
 		return this.lastSendMsgId;
 	}
@@ -2344,7 +2376,7 @@ public class WhatsApi {
 			} else if (type.equals("image")) {
 				ImageMessage msg = new ImageMessage(message, from, group);
 				String caption = media.getAttribute("caption");
-				
+
 				if(caption == null)
 					caption = "";
 				msg.setCaption(caption);
@@ -2355,7 +2387,7 @@ public class WhatsApi {
 			} else if (type.equals("video")) {
 				VideoMessage msg = new VideoMessage(message, from, group);
 				String caption = media.getAttribute("caption");
-				
+
 				if(caption == null)
 					caption = "";
 				msg.setCaption(caption);
@@ -2366,7 +2398,7 @@ public class WhatsApi {
 			} else if (type.equals("audio")) {
 				AudioMessage msg = new AudioMessage(message, from, group);
 				String caption = media.getAttribute("caption");
-				
+
 				if(caption == null)
 					caption = "";
 				msg.setCaption(caption);
@@ -2384,7 +2416,7 @@ public class WhatsApi {
 				msg.setSize(media.getAttribute("size"));
 				return msg;
 			}
-			
+
 		}
 		//TODO add specific classes for all supported messages
 		log.info("Other message type found: "+message.toString());
@@ -2706,7 +2738,7 @@ public class WhatsApi {
 	}
 
 	private boolean checkReceivedId(String id) {
-		
+
 		synchronized(serverReceivedId) {
 			if(log.isDebugEnabled()) {
 				log.debug("Checking received id ("+serverReceivedId+" against "+id);
