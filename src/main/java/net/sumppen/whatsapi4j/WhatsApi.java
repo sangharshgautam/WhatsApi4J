@@ -67,7 +67,7 @@ public class WhatsApi {
 	private final int PORT = 443;                                      // The port of the WhatsApp server.
 	private final int TIMEOUT_SEC = 2;                                  // The timeout for the connection with the WhatsApp servers.
 	private final String WHATSAPP_CHECK_HOST = "v.whatsapp.net/v2/exist";  // The check credentials host.
-	private final String WHATSAPP_GROUP_SERVER = "g.us";                   // The Group server hostname
+	public static final String WHATSAPP_GROUP_SERVER = "g.us";                   // The Group server hostname
 	private final String WHATSAPP_HOST = "c.whatsapp.net";                 // The hostname of the WhatsApp server.
 	private final String WHATSAPP_REGISTER_HOST = "v.whatsapp.net/v2/register"; // The register code host.
 	private final String WHATSAPP_REQUEST_HOST = "v.whatsapp.net/v2/code";      // The request code host.
@@ -1684,11 +1684,13 @@ public class WhatsApi {
 		if (node.hasChild("composing")) {
 			Event event = new Event(EventType.MESSAGE_COMPOSING, phoneNumber);
 			event.setGroupId(groupId);
+			event.setFrom(from);
 			eventManager.fireEvent(event);
 		}
 		if (node.hasChild("paused")) {
 			Event event = new Event(EventType.MESSAGE_PAUSED, phoneNumber);
 			event.setGroupId(groupId);
+			event.setFrom(from);
 			eventManager.fireEvent(event);
 		}
 	}
@@ -2354,7 +2356,7 @@ public class WhatsApi {
 	}
 
 	private Message createMessage(ProtocolNode message) {
-		Message res = null;
+
 		String from = parseJID(message.getAttribute("from"));
 		String contentType = message.getAttribute("type");
 		String participant = message.getAttribute("participant");
