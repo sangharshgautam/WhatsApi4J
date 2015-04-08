@@ -28,7 +28,7 @@ import org.json.JSONObject;
  */
 public class ExampleApplication {
 	private enum WhatsAppCommand {
-		send,request,register,status,text,sendText,image,sendImage,video,sendVideo
+		send,request,register,status,text,sendText,image,sendImage,video,sendVideo,groups
 	}
 
 	public static boolean running = true;
@@ -136,6 +136,13 @@ public class ExampleApplication {
 							System.out.println("Already logged in!");
 						}
 						break;
+					case groups:
+						if(loggedIn) {
+							getGroups(cons,wa);
+						} else {
+							System.out.println("Not logged in!");
+						}
+						break;
 					default: 
 						System.out.println("Unknown command: "+cmd);
 					}
@@ -157,6 +164,10 @@ public class ExampleApplication {
 			}
 			System.exit(1);
 		}
+	}
+
+	private static void getGroups(Console cons, WhatsApi wa) throws WhatsAppException {
+		wa.getGroups();
 	}
 
 	private static void setStatus(Console cons, WhatsApi wa) throws WhatsAppException {

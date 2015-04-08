@@ -2,6 +2,8 @@ package net.sumppen.whatsapi4j;
 
 import java.util.Map;
 
+import net.sumppen.whatsapi4j.events.Event;
+
 import org.apache.log4j.Logger;
 
 public class LoggingEventManager extends AbstractEventManager {
@@ -24,6 +26,10 @@ public class LoggingEventManager extends AbstractEventManager {
 			sb.append(eventData.get(key));
 		}
 		log.info(sb.toString());
+	}
+
+	public void fireEvent(Event event) {
+		log.info(event.toString());
 	}
 
 }

@@ -209,14 +209,6 @@ public abstract class AbstractEventManager implements EventManager {
 		fireEvent("get_error", eventData);
 	}
 
-	public void fireGetGroups(String phone, Map<String, String> groupList) {
-		// TODO Auto-generated method stub
-		Map<String,String> eventData = new HashMap<String, String>();
-		eventData.put(PHONE_NUMBER, phone);
-		
-		fireEvent("get_groups", eventData);
-	}
-
 	public void fireGetGroupsInfo(String phone, Map<String, String> groupList) {
 		// TODO Auto-generated method stub
 		Map<String,String> eventData = new HashMap<String, String>();

@@ -4,12 +4,9 @@ import java.net.Socket;
 import java.util.List;
 import java.util.Map;
 
-public interface EventManager {
+import net.sumppen.whatsapi4j.events.Event;
 
-	public abstract void fireClose( 
-			String phone, // The user phone number including the country code.
-			String error  // The error message. 
-			);
+public interface EventManager {
 
 	public abstract void fireCodeRegister(
 			String phone, // The user phone number including the country code.
@@ -120,16 +117,6 @@ public interface EventManager {
 			String error // Array with error data for why request failed.
 			);
 
-	public abstract void fireGetGroups(
-			String phone, // The user phone number including the country code.
-			Map<String, String> groupList
-			);
-
-	public abstract void fireGetGroupsInfo(
-			String phone, // The user phone number including the country code.
-			Map<String, String> groupList
-			);
-
 	public abstract void fireGetGroupsSubject(
 			String phone, // The user phone number including the country code.
 			String[] reset_from, // The group JID.
@@ -190,12 +177,6 @@ public interface EventManager {
 			String time, // The unix time when send message notification.
 			String name, // The sender name.
 			byte[] bs
-			);
-
-	public abstract void fireGetGroupParticipants(
-			String phone,
-			String groupId,
-			Map<String, String> groupList            
 			);
 
 	public abstract void fireGetPrivacyBlockedList(
@@ -261,29 +242,6 @@ public interface EventManager {
 			byte[] bs
 			);
 
-	public abstract void fireGroupsChatCreate(
-			String phone, // The user phone number including the country code.
-			String gId // The group JID.
-			);
-
-	public abstract void fireGroupsChatEnd(
-			String phone, // The user phone number including the country code.
-			String gId // The group JID.
-			);
-
-	public abstract void fireGroupsParticipantsAdd(
-			String phone, // The user phone number including the country code.
-			String groupId, // The group JID.
-			String participant // The participant JID.
-			);
-
-	public abstract void fireGroupsParticipantsRemove(
-			String phone, // The user phone number including the country code.
-			String groupId, // The group JID.
-			String participant, // The participant JID.
-			String author // The author JID.
-			);
-
 	public abstract void fireLogin(
 			String phone // The user phone number including the country code.
 			);
@@ -310,22 +268,6 @@ public interface EventManager {
 			ProtocolNode node,  
 			Map<String, Object> messageNode,
 			String reason
-			);
-
-	public abstract void fireMessageComposing(
-			String phone, // The user phone number including the country code.
-			String from, // The sender JID.
-			String msgid, // The message id.
-			String type, // The message type.
-			String time // The unix time when send message notification.
-			);
-
-	public abstract void fireMessagePaused(
-			String phone, // The user phone number including the country code.
-			String from, // The sender JID.
-			String msgid, // The message id.
-			String type, // The message type.
-			String time // The unix time when send message notification.
 			);
 
 	public abstract void fireMessageReceivedClient(
@@ -423,4 +365,6 @@ public interface EventManager {
 			String offline,
 			String retry
 			);
+
+	public abstract void fireEvent(Event event);
 }

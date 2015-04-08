@@ -35,6 +35,16 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 
+import net.sumppen.whatsapi4j.events.Event;
+import net.sumppen.whatsapi4j.events.EventType;
+import net.sumppen.whatsapi4j.message.AudioMessage;
+import net.sumppen.whatsapi4j.message.BasicMessage;
+import net.sumppen.whatsapi4j.message.ImageMessage;
+import net.sumppen.whatsapi4j.message.LocationMessage;
+import net.sumppen.whatsapi4j.message.Message;
+import net.sumppen.whatsapi4j.message.MessageType;
+import net.sumppen.whatsapi4j.message.TextMessage;
+import net.sumppen.whatsapi4j.message.VideoMessage;
 import net.sumppen.whatsapi4j.tools.BinHex;
 
 import org.apache.commons.codec.binary.Base64;
@@ -524,10 +534,27 @@ public class WhatsApi {
 	 * To capture this list you will need to bind the "onGetGroups" event.
 	 * @throws WhatsAppException 
 	 */
-	public void sendGetGroups() throws WhatsAppException {
-		//TODO implement this
-		throw new WhatsAppException("Not yet implemented");
-	}
+	public void getGroups() throws WhatsAppException {
+		String type = "participating";
+	       String msgID = createMsgId("getgroups");
+	        ProtocolNode child = new ProtocolNode(type, null, null, null);
+	        Map<String,String> attr = new HashMap<String, String>();
+	        attr.put("id", msgID);
+	        attr.put("type", "get");
+	        attr.put("xmlns", "w:g2");
+	        attr.put("to", WHATSAPP_GROUP_SERVER);
+
+	        List<ProtocolNode> children = new LinkedList<ProtocolNode>();
+	        children.add(child);
+			ProtocolNode node = new ProtocolNode("iq", attr, children, null);
+
+	        sendNode(node);
+	        try {
+				waitForServer(msgID);
+			} catch (Exception e) {
+				throw new WhatsAppException("Error getting groups",e);
+			}
+	 }
 
 	/**
 	 * Send a request to get information about a specific group
@@ -548,18 +575,6 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 */
 	public void sendGetGroupsOwning() throws WhatsAppException {
-		//TODO implement this
-		throw new WhatsAppException("Not yet implemented");
-	}
-
-	/**
-	 * Send a request to return a list of people participating in a specific
-	 * group.
-	 *
-	 * @param  String gjid The specific group id
-	 * @throws WhatsAppException 
-	 */
-	public void sendGetGroupsParticipants(String gjid) throws WhatsAppException {
 		//TODO implement this
 		throw new WhatsAppException("Not yet implemented");
 	}
@@ -1592,23 +1607,21 @@ public class WhatsApi {
 
 	private void processChatState(ProtocolNode node) throws WhatsAppException {
 		log.debug("Processing CHATSTATE");
+		String from = parseJID(node.getAttribute("from"));
+		String groupId = null;
+		if(from.contains("-")) {
+			groupId = from;
+			from = parseJID(node.getAttribute("participant"));
+		}
 		if (node.hasChild("composing")) {
-			eventManager().fireMessageComposing(
-					phoneNumber,
-					node.getAttribute("from"),
-					node.getAttribute("id"),
-					node.getAttribute("type"),
-					node.getAttribute("t")
-					);
+			Event event = new Event(EventType.MESSAGE_COMPOSING, phoneNumber);
+			event.setGroupId(groupId);
+			eventManager.fireEvent(event);
 		}
 		if (node.hasChild("paused")) {
-			eventManager().fireMessagePaused(
-					phoneNumber,
-					node.getAttribute("from"),
-					node.getAttribute("type"),
-					node.getAttribute("id"),
-					node.getAttribute("t")
-					);
+			Event event = new Event(EventType.MESSAGE_PAUSED, phoneNumber);
+			event.setGroupId(groupId);
+			eventManager.fireEvent(event);
 		}
 	}
 
@@ -1629,14 +1642,26 @@ public class WhatsApi {
 
 		}
 		if(type.equals("w:gp2")) {
+			List<ProtocolNode> groupList = node.getChild(0).getChildren();
+			String groupId = parseJID(node.getAttribute("from"));
+			
 			if(node.hasChild("create")) {
-
+				Event event = new Event(EventType.GROUP_CREATE, phoneNumber);
+				event.setData(groupList );
+				event.setGroupId(groupId);
+				eventManager().fireEvent(event);
 			}
 			if(node.hasChild("add")) {
-
+				Event event = new Event(EventType.GROUP_ADD, phoneNumber);
+				event.setData(groupList );
+				event.setGroupId(groupId);
+				eventManager().fireEvent(event);
 			}
 			if(node.hasChild("remove")) {
-
+				Event event = new Event(EventType.GROUP_REMOVE, phoneNumber);
+				event.setData(groupList);
+				event.setGroupId(groupId);
+				eventManager().fireEvent(event);
 			}
 			if(node.hasChild("participant")) {
 
@@ -1787,46 +1812,42 @@ public class WhatsApi {
 		if (node.nodeIdContains("group")) {
 			//There are multiple types of Group reponses. Also a valid group response can have NO children.
 			//Events fired depend on text in the ID field.
-			Map<String,String> groupList = new LinkedHashMap<String,String>();
+			List<ProtocolNode> groupList = null;
 			String groupId = null;
 			if (node.getChild(0) != null) {
-				for(ProtocolNode child : node.getChildren()) {
-					groupList.putAll(child.getAttributes());
-				}
+				groupList = node.getChild(0).getChildren();
 			}
 			if(node.nodeIdContains("creategroup")){
 				groupId = node.getChild(0).getAttribute("id");
-				eventManager().fireGroupsChatCreate(
-						phoneNumber,
-						groupId
-						);
+				Event event = new Event(EventType.GROUP_CREATE, phoneNumber);
+				event.setData(groupList);
+				event.setGroupId(groupId);
+				eventManager().fireEvent(event);
 			}
 			if(node.nodeIdContains("endgroup")){
 				groupId = node.getChild(0).getChild(0).getAttribute("id");
-				eventManager().fireGroupsChatEnd(
-						phoneNumber,
-						groupId
-						);
+				Event event = new Event(EventType.GROUP_END, phoneNumber);
+				event.setData(groupList);
+				event.setGroupId(groupId);
+				eventManager().fireEvent(event);
 			}
 			if(node.nodeIdContains("getgroups")){
-				eventManager().fireGetGroups(
-						phoneNumber,
-						groupList
-						);
+				Event event = new Event(EventType.GET_GROUPS, phoneNumber);
+				event.setData(groupList);
+				eventManager().fireEvent(event);
+				
 			}
 			if(node.nodeIdContains("getgroupinfo")){
-				eventManager().fireGetGroupsInfo(
-						phoneNumber,
-						groupList
-						);
+				Event event = new Event(EventType.GET_GROUPINFO, phoneNumber);
+				event.setData(groupList);
+				eventManager().fireEvent(event);
 			}
 			if(node.nodeIdContains("getgroupparticipants")){
 				groupId = parseJID(node.getAttribute("from"));
-				eventManager().fireGetGroupParticipants(
-						phoneNumber,
-						groupId,
-						groupList
-						);
+				Event event = new Event(EventType.GET_GROUPS, phoneNumber);
+				event.setData(groupList);
+				event.setGroupId(groupId);
+				eventManager().fireEvent(event);
 			}
 
 		}
@@ -2021,30 +2042,13 @@ public class WhatsApi {
 			}
 			if(!from.startsWith(phoneNumber)
 					&& from.contains("-")) {
-				String groupId = parseJID(from);
-				if (node.getAttribute("add") != null) {
-					eventManager().fireGroupsParticipantsAdd(
-							phoneNumber,
-							groupId,
-							parseJID(node.getAttribute("add"))
-							);
-				} else {
-					if (node.getAttribute("remove") != null) {
-						eventManager().fireGroupsParticipantsRemove(
-								phoneNumber,
-								groupId,
-								parseJID(node.getAttribute("remove")),
-								parseJID(node.getAttribute("author"))
-								);
-					}
-				}
 			}
 		}		
 	}
 
 	private String parseJID(String attribute) {
-		// TODO Auto-generated method stub
-		return null;
+		String[] parts = attribute.split("@");
+		return parts[0];
 	}
 
 	private void sendClearDirty(List<String> categories) throws WhatsAppException {
@@ -2095,7 +2099,8 @@ public class WhatsApi {
 		}
 
 		if (processor != null && (node.hasChild("body") || node.hasChild("media"))) {
-			processor.processMessage(node);
+			Message message = createMessage(node);
+			processor.processMessage(message);
 		}
 
 		if (node.hasChild("notify") && node.getChild(0).getAttribute("name") != null &&
@@ -2267,6 +2272,81 @@ public class WhatsApi {
 					node.getChild(2).getData()
 					);
 		}
+	}
+
+	private Message createMessage(ProtocolNode message) {
+		Message res = null;
+		String from = parseJID(message.getAttribute("from"));
+		String contentType = message.getAttribute("type");
+		String participant = message.getAttribute("participant");
+		String group = null;
+		if(participant != null && !participant.isEmpty()) {
+			group = from;
+			from = parseJID(participant);
+		}
+		if(contentType.equals("text")) {
+			ProtocolNode body = message.getChild("body");
+			String hex = new String(body.getData());
+			TextMessage text = new TextMessage(message, from, group);
+			text.setText(hex);
+			return text;
+		}
+		if(contentType.equals("media")) {
+			ProtocolNode media = message.getChild("media");
+			String type = media.getAttribute("type");
+			if(type.equals("location")) {
+				LocationMessage msg = new LocationMessage(message, from, group);
+				msg.setLongitude(media.getAttribute("longitude"));
+				msg.setLatitude(media.getAttribute("latitude"));
+			} else if (type.equals("image")) {
+				ImageMessage msg = new ImageMessage(message, from, group);
+				String caption = media.getAttribute("caption");
+				
+				if(caption == null)
+					caption = "";
+				msg.setCaption(caption);
+				byte[] preview = media.getData();
+				msg.setPreview(preview);
+				msg.setContent(media.getAttribute("url"));
+				return msg;
+			} else if (type.equals("video")) {
+				VideoMessage msg = new VideoMessage(message, from, group);
+				String caption = media.getAttribute("caption");
+				
+				if(caption == null)
+					caption = "";
+				msg.setCaption(caption);
+				byte[] preview = media.getData();
+				msg.setPreview(preview);
+				msg.setContent(media.getAttribute("url"));
+				return msg;
+			} else if (type.equals("audio")) {
+				AudioMessage msg = new AudioMessage(message, from, group);
+				String caption = media.getAttribute("caption");
+				
+				if(caption == null)
+					caption = "";
+				msg.setCaption(caption);
+				msg.setContent(media.getAttribute("url"));
+				msg.setAbitrate(media.getAttribute("abitrate"));
+				msg.setAcodec(media.getAttribute("acodec"));
+				msg.setAsampfreq(media.getAttribute("asampfreq"));
+				msg.setDuration(media.getAttribute("duration"));
+				msg.setFile(media.getAttribute("file"));
+				msg.setFileHash(media.getAttribute("filehash"));
+				msg.setIp(media.getAttribute("ip"));
+				msg.setMimetype(media.getAttribute("mimetype"));
+				msg.setOrigin(media.getAttribute("origin"));
+				msg.setSeconds(media.getAttribute("seconds"));
+				msg.setSize(media.getAttribute("size"));
+				return msg;
+			}
+			
+		}
+		//TODO add specific classes for all supported messages
+		log.info("Other message type found: "+message.toString());
+		BasicMessage msg = new BasicMessage(MessageType.OTHER, message, from, group);
+		return msg;
 	}
 
 	private void processMediaMessage(ProtocolNode node) throws WhatsAppException {

@@ -16,6 +16,8 @@ import com.google.common.io.Files;
 
 import net.sumppen.whatsapi4j.MessageProcessor;
 import net.sumppen.whatsapi4j.ProtocolNode;
+import net.sumppen.whatsapi4j.message.Message;
+import net.sumppen.whatsapi4j.message.TextMessage;
 
 public class ExampleMessageProcessor implements MessageProcessor {
 
@@ -66,10 +68,27 @@ public class ExampleMessageProcessor implements MessageProcessor {
 		try {
 			Files.write(preview, path);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		System.out.println("Preview: "+path.getAbsolutePath());
+	}
+
+	public void processMessage(Message message) {
+		//TODO add all supported message types
+		switch(message.getType()) {
+		case TEXT:
+			TextMessage msg = (TextMessage)message;
+			if(msg.getGroupId() != null && !msg.getGroupId().isEmpty()) {
+				//Group message
+				System.out.println(msg.getFrom()+"("+msg.getGroupId()+") ::: "+msg.getText());
+			} else {
+				//Private message
+				System.out.println(msg.getFrom()+" ::: "+msg.getText());
+			}
+			break;
+		default:
+			processMessage(message.getProtocolNode());
+		}
 	}
 
 }
