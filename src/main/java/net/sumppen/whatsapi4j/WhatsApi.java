@@ -193,10 +193,10 @@ public class WhatsApi {
 			log.debug(response.toString(1));
 		}
 		if (!response.getString("status").equals("ok")) {
-			eventManager().fireCodeRegisterFailed(phoneNumber, response.getString("status"), response.getString("reason"), "");//response.getString("retry_after"));
+			eventManager.fireCodeRegisterFailed(phoneNumber, response.getString("status"), response.getString("reason"), "");//response.getString("retry_after"));
 			throw new WhatsAppException("An error occurred registering the registration code from WhatsApp.");
 		} else {
-			eventManager().fireCodeRegister(phoneNumber, response.getString("login"), response.getString("pw"), response.getString("type"), response.getString("expiration"), 
+			eventManager.fireCodeRegister(phoneNumber, response.getString("login"), response.getString("pw"), response.getString("type"), response.getString("expiration"), 
 					response.getString("kind"), response.getString("price"), response.getString("cost"), response.getString("currency"), response.getString("price_expiration"));
 		}
 
@@ -281,19 +281,19 @@ public class WhatsApi {
 		}
 		if (!response.getString("status").equals("ok")) {
 			if(response.getString("status").equals("sent")) {
-				eventManager().fireCodeRequest(phoneNumber, method, response.getString("length"));
+				eventManager.fireCodeRequest(phoneNumber, method, response.getString("length"));
 			} else {
 				if(!response.isNull("reason") && response.getString("reason").equals("too_recent")) {
 					String retry_after = (response.has("retry_after")?response.getString("retry_after"):null);
-					eventManager().fireCodeRequestFailedTooRecent(phoneNumber, method, response.getString("reason"), retry_after);
+					eventManager.fireCodeRequestFailedTooRecent(phoneNumber, method, response.getString("reason"), retry_after);
 					throw new WhatsAppException("Code already sent. Retry after "+retry_after+" seconds");
 				} else {
-					eventManager().fireCodeRequestFailed(phoneNumber, method, response.getString("reason"), (response.has("param")?response.getString("param"):null));
+					eventManager.fireCodeRequestFailed(phoneNumber, method, response.getString("reason"), (response.has("param")?response.getString("param"):null));
 					throw new WhatsAppException("There was a problem trying to request the code. Status="+response.getString("status"));
 				}
 			}
 		} else {
-			eventManager().fireCodeRegister(phoneNumber, response.getString("login"), response.getString("pw"), response.getString("type"), response.getString("expiration"), 
+			eventManager.fireCodeRegister(phoneNumber, response.getString("login"), response.getString("pw"), response.getString("type"), response.getString("expiration"), 
 					response.getString("kind"), response.getString("price"), response.getString("cost"), response.getString("currency"), response.getString("price_expiration"));
 		}
 		return response;
@@ -355,7 +355,7 @@ public class WhatsApi {
 				log.error("Exception while disconnecting",e);
 			}
 		}	
-		eventManager().fireDisconnect(
+		eventManager.fireDisconnect(
 				phoneNumber,
 				socket
 				);
@@ -1233,7 +1233,7 @@ public class WhatsApi {
 		ProtocolNode node = new ProtocolNode("iq", map, nodes, null);
 		try {
 			sendNode(node);
-			eventManager().fireSendStatusUpdate(phoneNumber, txt);
+			eventManager.fireSendStatusUpdate(phoneNumber, txt);
 		} catch (Exception e) {
 			throw new WhatsAppException("Failed to update status");
 		}
@@ -1469,7 +1469,7 @@ public class WhatsApi {
 		presence.put("name",name);
 		ProtocolNode node = new ProtocolNode("presence", presence, null, null);
 		sendNode(node);
-		eventManager().fireSendPresence(
+		eventManager.fireSendPresence(
 				phoneNumber, 
 				type,
 				presence.get("name")
@@ -1737,19 +1737,19 @@ public class WhatsApi {
 				Event event = new Event(EventType.GROUP_CREATE, phoneNumber);
 				event.setData(groupList );
 				event.setGroupId(groupId);
-				eventManager().fireEvent(event);
+				eventManager.fireEvent(event);
 			}
 			if(node.hasChild("add")) {
 				Event event = new Event(EventType.GROUP_ADD, phoneNumber);
 				event.setData(groupList );
 				event.setGroupId(groupId);
-				eventManager().fireEvent(event);
+				eventManager.fireEvent(event);
 			}
 			if(node.hasChild("remove")) {
 				Event event = new Event(EventType.GROUP_REMOVE, phoneNumber);
 				event.setData(groupList);
 				event.setGroupId(groupId);
-				eventManager().fireEvent(event);
+				eventManager.fireEvent(event);
 			}
 			if(node.hasChild("participant")) {
 
@@ -1800,7 +1800,7 @@ public class WhatsApi {
 	private void processReceipt(ProtocolNode node) throws WhatsAppException {
 		log.debug("Processing RECEIPT");
 		addServerReceivedId(node.getAttribute("id"));
-		eventManager().fireMessageReceivedClient(
+		eventManager.fireMessageReceivedClient(
 				phoneNumber,
 				node.getAttribute("from"),
 				node.getAttribute("id"),
@@ -1844,10 +1844,13 @@ public class WhatsApi {
 		}
 	}
 	private void processIq(ProtocolNode node) throws IOException, WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
+		
 		log.info("Processing IQ "+node.getAttribute("type"));
+		ProtocolNode child = node.getChild(0);
+		
 		if (node.getAttribute("type").equals("get")
 				&& node.getAttribute("xmlns").equals("urn:xmpp:ping")) {
-			eventManager().firePing(
+			eventManager.firePing(
 					phoneNumber,
 					node.getAttribute("id")
 					);
@@ -1858,50 +1861,52 @@ public class WhatsApi {
 				log.debug("processIq: setting received id to "+node.getAttribute("id"));
 			}
 			addServerReceivedId(node.getAttribute("id"));
-			if (node.getChild(0) != null &&
-					node.getChild(0).getTag().equals(ProtocolTag.QUERY)) {
-				if (node.getChild(0).getAttribute("xmlns").equals("jabber:iq:privacy")) {
-					// ToDo: We need to get explicitly list out the children as arguments
-					//       here.
-					eventManager().fireGetPrivacyBlockedList(
-							phoneNumber,
-							node.getChild(0).getChild(0).getChildren()
-							);
+			
+			if (child != null) {
+				if (child.getTag().equals(ProtocolTag.QUERY)) {
+					if (child.getAttribute("xmlns").equals("jabber:iq:privacy")) {
+						// ToDo: We need to get explicitly list out the children as arguments
+						//       here.
+						eventManager.fireGetPrivacyBlockedList(
+								phoneNumber,
+								child.getChild(0).getChildren()
+								);
+					}
+					if (child.getAttribute("xmlns").equals("jabber:iq:last")) {
+						eventManager.fireGetRequestLastSeen(
+								phoneNumber,
+								node.getAttribute("from"),
+								node.getAttribute("id"),
+								child.getAttribute("seconds")
+								);				}
 				}
-				if (node.getChild(0).getAttribute("xmlns").equals("jabber:iq:last")) {
-					eventManager().fireGetRequestLastSeen(
-							phoneNumber,
-							node.getAttribute("from"),
-							node.getAttribute("id"),
-							node.getChild(0).getAttribute("seconds")
-							);				}
 			}
 			messageQueue.add(node);
 		}
-		if (node.getChild(0) != null && node.getChild(0).getTag().equals("props")) {
+		if (child != null && child.getTag().equals("props")) {
 			//server properties
 			Map<String,String> props = new LinkedHashMap<String,String>();
-			for(ProtocolNode child : node.getChild(0).getChildren()) {
-				props.put(child.getAttribute("name"),child.getAttribute("value"));
+			for(ProtocolNode c : child.getChildren()) {
+				props.put(c.getAttribute("name"),c.getAttribute("value"));
 			}
-			eventManager().fireGetServerProperties(
+			eventManager.fireGetServerProperties(
 					phoneNumber,
-					node.getChild(0).getAttribute("version"),
+					child.getAttribute("version"),
 					props
 					);
 		}
-		if (node.getChild(0) != null && node.getChild(0).getTag().equals("picture")) {
-			eventManager().fireGetProfilePicture(
+		if (child != null && child.getTag().equals("picture")) {
+			eventManager.fireGetProfilePicture(
 					phoneNumber,
 					node.getAttribute("from"),
-					node.getChild("picture").getAttribute("type"),
-					node.getChild("picture").getData()
+					child.getAttribute("type"),
+					child.getData()
 					);
 		}
-		if (node.getChild(0) != null && node.getChild(0).getTag().equals("media")) {
+		if (child != null && child.getTag().equals("media")) {
 			processUploadResponse(node);
 		}
-		if (node.getChild(0) != null && node.getChild(0).getTag().equals("duplicate")) {
+		if (child != null && child.getTag().equals("duplicate")) {
 			processUploadResponse(node);
 		}
 		if (node.nodeIdContains("group")) {
@@ -1909,40 +1914,40 @@ public class WhatsApi {
 			//Events fired depend on text in the ID field.
 			List<ProtocolNode> groupList = null;
 			String groupId = null;
-			if (node.getChild(0) != null) {
-				groupList = node.getChild(0).getChildren();
+			if (child != null) {
+				groupList = child.getChildren();
 			}
 			if(node.nodeIdContains("creategroup")){
-				groupId = node.getChild(0).getAttribute("id");
+				groupId = child.getAttribute("id");
 				Event event = new Event(EventType.GROUP_CREATE, phoneNumber);
 				event.setData(groupList);
 				event.setGroupId(groupId);
-				eventManager().fireEvent(event);
+				eventManager.fireEvent(event);
 			}
 			if(node.nodeIdContains("endgroup")){
-				groupId = node.getChild(0).getChild(0).getAttribute("id");
+				groupId = child.getChild(0).getAttribute("id");
 				Event event = new Event(EventType.GROUP_END, phoneNumber);
 				event.setData(groupList);
 				event.setGroupId(groupId);
-				eventManager().fireEvent(event);
+				eventManager.fireEvent(event);
 			}
 			if(node.nodeIdContains("getgroups")){
 				Event event = new Event(EventType.GET_GROUPS, phoneNumber);
 				event.setData(groupList);
-				eventManager().fireEvent(event);
+				eventManager.fireEvent(event);
 
 			}
 			if(node.nodeIdContains("getgroupinfo")){
 				Event event = new Event(EventType.GET_GROUPINFO, phoneNumber);
 				event.setData(groupList);
-				eventManager().fireEvent(event);
+				eventManager.fireEvent(event);
 			}
 			if(node.nodeIdContains("getgroupparticipants")){
 				groupId = parseJID(node.getAttribute("from"));
 				Event event = new Event(EventType.GET_GROUPS, phoneNumber);
 				event.setData(groupList);
 				event.setGroupId(groupId);
-				eventManager().fireEvent(event);
+				eventManager.fireEvent(event);
 			}
 
 		}
@@ -1982,7 +1987,7 @@ public class WhatsApi {
 		Map<String, Object> messageNode = mediaQueue.get(id);
 		if (messageNode == null) {
 			//message not found, can't send!
-			eventManager().fireMediaUploadFailed(
+			eventManager.fireMediaUploadFailed(
 					phoneNumber,
 					id,
 					node,
@@ -2007,7 +2012,7 @@ public class WhatsApi {
 
 			if (json == null) {
 				//failed upload
-				eventManager().fireMediaUploadFailed(
+				eventManager.fireMediaUploadFailed(
 						phoneNumber,
 						id,
 						node,
@@ -2058,7 +2063,7 @@ public class WhatsApi {
 		//            $this->sendMessageNode($to, $mediaNode);
 		//        }
 		sendMessageNode(to, mediaNode,null);
-		eventManager().fireMediaMessageSent(
+		eventManager.fireMediaMessageSent(
 				phoneNumber,
 				to,
 				id,
@@ -2095,14 +2100,10 @@ public class WhatsApi {
 
 		ProtocolNode messageNode = new ProtocolNode("iq", messageHash, null, null);
 		sendNode(messageNode);
-		eventManager().fireSendPong(
+		eventManager.fireSendPong(
 				phoneNumber, 
 				msgid
 				);
-	}
-
-	private EventManager eventManager() {
-		return eventManager ;
 	}
 
 	private void file_put_contents(String string, Object challengeData2) {
@@ -2133,7 +2134,7 @@ public class WhatsApi {
 		if(from != null && type != null) {
 			if (from.startsWith(phoneNumber) 
 					&& !from.contains("-")) {
-				eventManager().firePresence(
+				eventManager.firePresence(
 						phoneNumber,
 						from,
 						type
@@ -2184,7 +2185,7 @@ public class WhatsApi {
 		// check if it is a response to a status request
 		String[] foo = node.getAttribute("from").split("@");
 		if (foo.length > 1 && foo[1].equals("s.us") && node.getChild("body") != null) {
-			eventManager().fireGetStatus(
+			eventManager.fireGetStatus(
 					phoneNumber,
 					node.getAttribute("from"),
 					node.getAttribute("type"),
@@ -2208,7 +2209,7 @@ public class WhatsApi {
 			if(author == null || author.length() < 1)
 			{
 				//private chat message
-				eventManager().fireGetMessage(
+				eventManager.fireGetMessage(
 						phoneNumber,
 						node.getAttribute("from"),
 						node.getAttribute("id"),
@@ -2221,7 +2222,7 @@ public class WhatsApi {
 			else
 			{
 				//group chat message
-				eventManager().fireGetGroupMessage(
+				eventManager.fireGetGroupMessage(
 						phoneNumber,
 						node.getAttribute("from"),
 						author,
@@ -2235,14 +2236,14 @@ public class WhatsApi {
 		}
 		if (node.hasChild("notification") && node.getChild("notification").getAttribute("type").equals("picture")) {
 			if (node.getChild("notification").hasChild("set")) {
-				eventManager().fireProfilePictureChanged(
+				eventManager.fireProfilePictureChanged(
 						phoneNumber,
 						node.getAttribute("from"),
 						node.getAttribute("id"),
 						node.getAttribute("t")
 						);
 			} else if (node.getChild("notification").hasChild("delete")) {
-				eventManager().fireProfilePictureDeleted(
+				eventManager.fireProfilePictureDeleted(
 						phoneNumber,
 						node.getAttribute("from"),
 						node.getAttribute("id"),
@@ -2252,7 +2253,7 @@ public class WhatsApi {
 		}
 		if (node.getChild("notify") != null && node.getChild(0).getAttribute("name") != null && node.getChild("media") != null) {
 			if (node.getChild(2).getAttribute("type") == "image") {
-				eventManager().fireGetImage(
+				eventManager.fireGetImage(
 						phoneNumber,
 						node.getAttribute("from"),
 						node.getAttribute("id"),
@@ -2270,7 +2271,7 @@ public class WhatsApi {
 						);
 			} 
 			if (node.getChild(2).getAttribute("type") == "video") {
-				eventManager().fireGetVideo(
+				eventManager.fireGetVideo(
 						phoneNumber,
 						node.getAttribute("from"),
 						node.getAttribute("id"),
@@ -2289,7 +2290,7 @@ public class WhatsApi {
 						);
 			} else
 				if (node.getChild(2).getAttribute("type") == "audio") {
-					eventManager().fireGetAudio(
+					eventManager.fireGetAudio(
 							phoneNumber,
 							node.getAttribute("from"),
 							node.getAttribute("id"),
@@ -2306,7 +2307,7 @@ public class WhatsApi {
 							);
 				} 
 			if (node.getChild(2).getAttribute("type") == "vcard") {
-				eventManager().fireGetvCard(
+				eventManager.fireGetvCard(
 						phoneNumber,
 						node.getAttribute("from"),
 						node.getAttribute("id"),
@@ -2320,7 +2321,7 @@ public class WhatsApi {
 			if (node.getChild(2).getAttribute("type") == "location") {
 				String url = node.getChild(2).getAttribute("url");
 				String name = node.getChild(2).getAttribute("name");
-				eventManager().fireGetLocation(
+				eventManager.fireGetLocation(
 						phoneNumber,
 						node.getAttribute("from"),
 						node.getAttribute("id"),
@@ -2340,7 +2341,7 @@ public class WhatsApi {
 				log.debug("processMessage: setting received id to "+node.getAttribute("id"));
 			}
 			addServerReceivedId(node.getAttribute("id"));
-			eventManager().fireMessageReceivedServer(
+			eventManager.fireMessageReceivedServer(
 					phoneNumber,
 					node.getAttribute("from"),
 					node.getAttribute("id"),
@@ -2349,7 +2350,7 @@ public class WhatsApi {
 					);
 		}
 		if (node.getChild("received") != null) {
-			eventManager().fireMessageReceivedClient(
+			eventManager.fireMessageReceivedClient(
 					phoneNumber,
 					node.getAttribute("from"),
 					node.getAttribute("id"),
@@ -2361,7 +2362,7 @@ public class WhatsApi {
 			log.debug(node);
 			String[] reset_from = node.getAttribute("from").split("@");
 			String[] reset_author = node.getAttribute("author").split("@");
-			eventManager().fireGetGroupsSubject(
+			eventManager.fireGetGroupsSubject(
 					phoneNumber,
 					reset_from,
 					node.getAttribute("t"),
@@ -2492,7 +2493,7 @@ public class WhatsApi {
 		messageHash.put("t",Long.toString(new Date().getTime()));
 		ProtocolNode messageNode = new ProtocolNode("receipt", messageHash, null, null);
 		sendNode(messageNode);
-		eventManager().fireSendMessageReceived(
+		eventManager.fireSendMessageReceived(
 				phoneNumber, 
 				msg.getAttribute("from"),
 				messageHash.get("t") 
@@ -2735,7 +2736,7 @@ public class WhatsApi {
 		list.add(node);
 		ProtocolNode messageNode = new ProtocolNode("message", messageHash, list, null);
 		sendNode(messageNode);
-		eventManager().fireSendMessage(
+		eventManager.fireSendMessage(
 				phoneNumber,
 				getJID(to),
 				messageHash.get("id"),

@@ -1,18 +1,13 @@
 package net.sumppen.whatsapi4j.example;
 
-import java.util.List;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
-
 import net.sumppen.whatsapi4j.AbstractEventManager;
-import net.sumppen.whatsapi4j.ProtocolNode;
 import net.sumppen.whatsapi4j.events.Event;
-import net.sumppen.whatsapi4j.events.EventType;
 
 public class ExampleEventManager extends AbstractEventManager {
 	@Override
-	public void fireEvent(String event, Map<String, String> eventData) {
+	public void fireEvent(String event, Map<String, Object> eventData) {
 		if(event.equals(AbstractEventManager.EVENT_UNKNOWN)) {
 			return;
 		}
