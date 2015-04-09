@@ -49,6 +49,7 @@ import net.sumppen.whatsapi4j.message.MessageType;
 import net.sumppen.whatsapi4j.message.TextMessage;
 import net.sumppen.whatsapi4j.message.VideoMessage;
 import net.sumppen.whatsapi4j.tools.BinHex;
+import net.sumppen.whatsapi4j.tools.CharsetUtils;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
@@ -75,7 +76,6 @@ public class WhatsApi {
 	private final String WHATSAPP_DEVICE = "iPhone";                      // The device name.
 	private final String WHATSAPP_VER = "2.11.14";                // The WhatsApp version.
 	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.12.61 S40Version/14.26 Device/Nokia302";// User agent used in request/registration code.
-
 
 	private final Logger log = Logger.getLogger(WhatsApi.class);
 	private String identity;
@@ -1222,7 +1222,7 @@ public class WhatsApi {
 	 */
 	public void sendStatusUpdate(String txt) throws WhatsAppException {
 
-		ProtocolNode child = new ProtocolNode("status", null, null, txt.getBytes());
+		ProtocolNode child = new ProtocolNode("status", null, null, CharsetUtils.toBytes(txt));
 		Map<String, String> map = new LinkedHashMap<String, String>();
 		map.put("to", "s.whatsapp.net");
 		map.put("type", "set");
@@ -1339,7 +1339,7 @@ public class WhatsApi {
 	public String sendMessage(String to, String message) throws WhatsAppException {
 		return sendMessage(to, message, null);
 	}
-
+	
 	/**
 	 * Send a text message to the user/group.
 	 *
@@ -1353,7 +1353,7 @@ public class WhatsApi {
 	 */
 	public String sendMessage(String to, String message, String id) throws WhatsAppException {
 		message = parseMessageForEmojis(message);
-		ProtocolNode bodyNode = new ProtocolNode("body", null, null, message.getBytes());
+		ProtocolNode bodyNode = new ProtocolNode("body", null, null, CharsetUtils.toBytes(message));
 		try {
 			return sendMessageNode(to, bodyNode, id);
 		} catch (Exception e) {
@@ -2040,7 +2040,7 @@ public class WhatsApi {
 		mediaAttribs.put("file",filename);
 		mediaAttribs.put("size",filesize);
 		if(messageNode.containsKey("caption") && !((String)messageNode.get("caption")).isEmpty()) {
-			mediaAttribs.put("caption", ((String)messageNode.get("caption")));
+			mediaAttribs.put("caption", (String)messageNode.get("caption"));
 		}
 
 		to = (String) messageNode.get("to");

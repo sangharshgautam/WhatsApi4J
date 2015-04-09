@@ -1,10 +1,10 @@
 package net.sumppen.whatsapi4j;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import net.sumppen.whatsapi4j.tools.BinHex;
+import net.sumppen.whatsapi4j.tools.CharsetUtils;
 
 public class ProtocolNode {
 	
@@ -132,5 +132,10 @@ public class ProtocolNode {
 		}
 		return false;
 	}
-
+	
+	public String getDataAsString() {
+		
+		return CharsetUtils.toString(data);
+	}
+	
 }
