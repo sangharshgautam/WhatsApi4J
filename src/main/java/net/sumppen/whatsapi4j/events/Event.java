@@ -10,6 +10,7 @@ public class Event {
 	private final String phoneNumber; 
 	private List<ProtocolNode> data;
 	private String groupId = null;
+	private String from;
 	
 	public Event(EventType type, String phoneNumber) {
 		this.type = type;
@@ -40,6 +41,14 @@ public class Event {
 
 	public void setGroupId(String groupId) {
 		this.groupId = groupId;
+	}
+
+	public String getFrom() {
+		return from;
+	}
+
+	public void setFrom(String from) {
+		this.from = from;
 	}
 
 	@Override

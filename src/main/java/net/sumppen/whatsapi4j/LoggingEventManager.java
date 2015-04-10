@@ -11,7 +11,7 @@ public class LoggingEventManager extends AbstractEventManager {
 	private final Logger log = Logger.getLogger(LoggingEventManager.class);
 	
 	@Override
-	public void fireEvent(String event, Map<String, String> eventData) {
+	public void fireEvent(String event, Map<String, Object> eventData) {
 		StringBuilder sb = new StringBuilder();
 		boolean first = true;
 		sb.append("Event "+event+": ");
