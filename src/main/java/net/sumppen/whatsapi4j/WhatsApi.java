@@ -625,16 +625,16 @@ public class WhatsApi {
 		Map<String, String> map = new LinkedHashMap<String, String>();
 		map.put("type", large ? "image" : "preview");
 		ProtocolNode picture = new ProtocolNode("picture", map, null, null);
-		
+
 		map = new LinkedHashMap<String, String>();
 		map.put("id", createMsgId("getpicture"));
 		map.put("type", "get");
 		map.put("xmlns", "w:profile:picture");
 		map.put("to", getJID(number));
-		
+
 		List<ProtocolNode> lista = new LinkedList<ProtocolNode>();
 		lista.add(picture);
-		
+
 		ProtocolNode node = new ProtocolNode("iq", map, lista, null);
 		try {
 			sendNode(node);
@@ -921,9 +921,13 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 */
 	public void sendMessageComposing(String to) throws WhatsAppException {
-		//TODO implement this
-		throw new WhatsAppException("Not yet implemented");
-	}
+		HashMap<String, String> map = new HashMap<String, String>();
+		map.put("to",getJID(to));
+		ArrayList<ProtocolNode> list = new ArrayList<ProtocolNode>();
+		ProtocolNode status = new ProtocolNode("composing", null, null, null);
+		list.add(status);
+		ProtocolNode messageNode = new ProtocolNode("chatstate", map, list, null);
+		sendNode(messageNode);	}
 
 
 	/**
@@ -1000,9 +1004,13 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 */
 	public void sendMessagePaused(String to) throws WhatsAppException {
-		//TODO implement this
-		throw new WhatsAppException("Not yet implemented");
-	}
+        HashMap<String, String> map = new HashMap<String, String>();
+        map.put("to",getJID(to));
+        ArrayList<ProtocolNode> list = new ArrayList<ProtocolNode>();
+        ProtocolNode status = new ProtocolNode("paused", null, null, null);
+        list.add(status);
+        ProtocolNode messageNode = new ProtocolNode("chatstate", map, list, null);
+        sendNode(messageNode);	}
 
 	/**
 	 * Send a video to the user/group.
@@ -1339,7 +1347,7 @@ public class WhatsApi {
 	public String sendMessage(String to, String message) throws WhatsAppException {
 		return sendMessage(to, message, null);
 	}
-	
+
 	/**
 	 * Send a text message to the user/group.
 	 *
@@ -1844,10 +1852,10 @@ public class WhatsApi {
 		}
 	}
 	private void processIq(ProtocolNode node) throws IOException, WhatsAppException, IncompleteMessageException, InvalidMessageException, InvalidTokenException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
-		
+
 		log.info("Processing IQ "+node.getAttribute("type"));
 		ProtocolNode child = node.getChild(0);
-		
+
 		if (node.getAttribute("type").equals("get")
 				&& node.getAttribute("xmlns").equals("urn:xmpp:ping")) {
 			eventManager.firePing(
@@ -1861,7 +1869,7 @@ public class WhatsApi {
 				log.debug("processIq: setting received id to "+node.getAttribute("id"));
 			}
 			addServerReceivedId(node.getAttribute("id"));
-			
+
 			if (child != null) {
 				if (child.getTag().equals(ProtocolTag.QUERY)) {
 					if (child.getAttribute("xmlns").equals("jabber:iq:privacy")) {
