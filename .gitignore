@@ -1,0 +1,6 @@
+/target/
+/exampleapplication.log
+/password.txt
+.settings/
+.project
+.classpath
