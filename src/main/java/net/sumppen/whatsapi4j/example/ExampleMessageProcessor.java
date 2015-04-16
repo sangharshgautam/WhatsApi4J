@@ -80,10 +80,10 @@ public class ExampleMessageProcessor implements MessageProcessor {
 			TextMessage msg = (TextMessage)message;
 			if(msg.getGroupId() != null && !msg.getGroupId().isEmpty()) {
 				//Group message
-				System.out.println(msg.getFrom()+"("+msg.getGroupId()+") ::: "+msg.getText());
+				System.out.println(msg.getDate()+" :: "+msg.getFrom()+"("+msg.getGroupId()+"): "+msg.getText());
 			} else {
 				//Private message
-				System.out.println(msg.getFrom()+" ::: "+msg.getText());
+				System.out.println(msg.getDate()+" :: "+msg.getFrom()+" : "+msg.getText());
 			}
 			break;
 		default:

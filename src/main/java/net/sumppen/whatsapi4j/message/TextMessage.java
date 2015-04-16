@@ -20,8 +20,8 @@ public class TextMessage extends BasicMessage {
 	@Override
 	public String toString() {
 		if(getGroupId() != null) {
-			return getFrom()+"("+getGroupId()+"): "+text;
+			return getDate()+" :: "+getFrom()+"("+getGroupId()+"): "+text;
 		}
-		return getFrom()+": "+text;
+		return getDate()+" :: "+getFrom()+": "+text;
 	}
 }
