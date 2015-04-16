@@ -88,9 +88,6 @@ public class WhatsMediaUploader {
 
 	private static JSONObject sendData(String host, String post, String head,
 			String filepath, File mediaFile, String tail, int startFrom) throws IOException {
-		Security.addProvider(
-				new com.sun.net.ssl.internal.ssl.Provider());
-
 		SSLSocketFactory factory = 
 				(SSLSocketFactory)SSLSocketFactory.getDefault();
 		SSLSocket socket = 
