@@ -7,6 +7,8 @@ Java adaptation of PHP WA API by venomous0x.
 
 Original PHP version is found here: https://github.com/venomous0x/WhatsAPI
 
+Now moved to following the more current version here: https://github.com/mgp25/WhatsAPI-Official
+
 ## Testing
 
 There is an example command line application which currently has 3 supported functions:
