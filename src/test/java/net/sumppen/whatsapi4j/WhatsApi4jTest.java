@@ -8,12 +8,13 @@ import java.util.Map;
 
 import net.sumppen.whatsapi4j.tools.BinHex;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.Test;
 
 public class WhatsApi4jTest {
 
-	private final Logger log = Logger.getLogger(WhatsApi4jTest.class);
+	private final Logger log = LoggerFactory.getLogger(WhatsApi4jTest.class);
 	@Test
 	public void testPbkdf2() throws Exception {
         WhatsApi whatsapi = new WhatsApi("12345678", "", "test");
@@ -91,7 +92,7 @@ public class WhatsApi4jTest {
         WhatsApi whatsapi = new WhatsApi("12345678", "", "test");
         List<Country> countries = whatsapi.getCountries();
         for(Country country : countries) {
-        	log.debug(country);
+        	log.debug(country.toString());
         }
         assertEquals(254,countries.size());
 	}

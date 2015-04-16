@@ -4,11 +4,12 @@ import java.util.Map;
 
 import net.sumppen.whatsapi4j.events.Event;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LoggingEventManager extends AbstractEventManager {
 
-	private final Logger log = Logger.getLogger(LoggingEventManager.class);
+	private final Logger log = LoggerFactory.getLogger(LoggingEventManager.class);
 	
 	@Override
 	public void fireEvent(String event, Map<String, Object> eventData) {

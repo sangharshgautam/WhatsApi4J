@@ -52,7 +52,8 @@ import net.sumppen.whatsapi4j.tools.BinHex;
 import net.sumppen.whatsapi4j.tools.CharsetUtils;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -77,7 +78,7 @@ public class WhatsApi {
 	private final String WHATSAPP_VER = "2.11.14";                // The WhatsApp version.
 	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.12.61 S40Version/14.26 Device/Nokia302";// User agent used in request/registration code.
 
-	private final Logger log = Logger.getLogger(WhatsApi.class);
+	private final Logger log = LoggerFactory.getLogger(WhatsApi.class);
 	private String identity;
 	private final String name;
 	private final String phoneNumber;
@@ -1458,7 +1459,7 @@ public class WhatsApi {
 		query.put("c","cookie");
 
 		JSONObject response = getResponse(host, query);
-		log.debug(response);
+		log.debug(response.toString());
 		if (!response.getString("status").equals("ok")) {
 			throw new WhatsAppException("There was a problem trying to request the code. Status="+response.getString("status"));
 		} else {
@@ -1515,22 +1516,22 @@ public class WhatsApi {
 			}
 
 		} catch (FileNotFoundException e) {
-			log.warn(e);
+			log.warn("File not found",e);
 		} catch (IOException e) {
-			log.warn(e);
+			log.warn("IO exception", e);
 		} finally {
 			if (br != null) {
 				try {
 					br.close();
 				} catch (IOException e) {
-					log.warn(e);
+					log.warn("IO exception", e);
 				}
 			}
 			if(is != null) {
 				try {
 					is.close();
 				} catch (IOException e) {
-					log.warn(e);
+					log.warn("IO exception", e);
 				}
 			}
 		}		
@@ -2526,7 +2527,7 @@ public class WhatsApi {
 					);
 		}
 		if (node.getAttribute("type").equals("subject")) {
-			log.debug(node);
+			log.debug(node.toString());
 			String[] reset_from = node.getAttribute("from").split("@");
 			String[] reset_author = node.getAttribute("author").split("@");
 			eventManager.fireGetGroupsSubject(

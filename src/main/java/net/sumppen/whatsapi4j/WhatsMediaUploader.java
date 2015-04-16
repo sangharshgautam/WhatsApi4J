@@ -23,13 +23,14 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.ws.rs.HEAD;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class WhatsMediaUploader {
 
-	private static final Logger log = Logger.getLogger(WhatsMediaUploader.class);
+	private static final Logger log = LoggerFactory.getLogger(WhatsMediaUploader.class);
 
 	public static JSONObject pushFile(ProtocolNode uploadResponseNode,
 			Map<String, Object> messageContainer, File mediaFile, String selfJID) throws NoSuchAlgorithmException, IOException {

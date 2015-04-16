@@ -5,9 +5,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
 
 import net.sumppen.whatsapi4j.EventManager;
 import net.sumppen.whatsapi4j.MessageProcessor;
@@ -15,13 +15,9 @@ import net.sumppen.whatsapi4j.SyncType;
 import net.sumppen.whatsapi4j.WhatsApi;
 import net.sumppen.whatsapi4j.WhatsAppException;
 
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Layout;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
 
 /**
  * Example application
@@ -38,15 +34,10 @@ public class ExampleApplication {
 	
 	public static void main(String[] args) {
 		boolean loggedIn = false;
-		Logger.getRootLogger().setLevel(Level.ALL);
-		Layout layout = new PatternLayout("%d [%t] %-5p %c %x - %m%n");
 		String filename = "exampleapplication.log";
-		try {
-			Logger.getRootLogger().addAppender(new FileAppender(layout, filename));
-		} catch (IOException e1) {
-			System.err.println("Failed to open logfile");
-			e1.printStackTrace();
-		}
+		System.setProperty("org.slf4j.simpleLogger.logFile", filename);
+		System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
+		System.setProperty("org.slf4j.simpleLogger.showDateTime", "true");
 		if(args.length != 4) {
 			System.out.println("Usage: ExampleApplication <username> <password> <id> <nick>");
 			System.exit(1);
