@@ -7,7 +7,7 @@ public enum ProtocolTag {
 	IB("ib"), IQ("iq"),PING("ping"),QUERY("query"), 
 	DIRTY("dirty"), OFFLINE("offline"),
 	NOTIFICATION("notification"),CHATSTATE("chatstate"),
-	UNKNOWN("unknown"), STREAM_ERROR("stream:error");
+	UNKNOWN("unknown"), STREAM_ERROR("stream:error"), SYNC("sync");
 	
 	private String tag;
 
@@ -28,4 +28,5 @@ public enum ProtocolTag {
 	      }
 	      return null;
 	}
+	
 }

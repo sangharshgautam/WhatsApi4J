@@ -11,6 +11,7 @@ public class Event {
 	private List<ProtocolNode> data;
 	private String groupId = null;
 	private String from;
+	private Object eventSpecificData;
 	
 	public Event(EventType type, String phoneNumber) {
 		this.type = type;
@@ -74,6 +75,17 @@ public class Event {
 				sb.append(node.toString());
 			}
 		}
+		if(eventSpecificData != null) {
+			sb.append(eventSpecificData.toString());
+		}
 		return sb.toString();
+	}
+
+	public Object getEventSpecificData() {
+		return eventSpecificData;
+	}
+
+	public void setEventSpecificData(Object eventSpecificData) {
+		this.eventSpecificData = eventSpecificData;
 	}
 }
