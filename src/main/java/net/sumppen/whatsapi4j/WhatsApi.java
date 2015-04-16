@@ -407,6 +407,10 @@ public class WhatsApi {
 	 */
 	public void loginWithPassword(String password) throws WhatsAppException {
 		this.password = password;
+		login();
+	}
+
+	private void login() throws WhatsAppException {
 		try {
 			doLogin();
 			if(loginStatus != LoginStatus.CONNECTED_STATUS) {
@@ -415,6 +419,18 @@ public class WhatsApi {
 		} catch (Exception e) {
 			throw new WhatsAppException(e);
 		}
+	}
+	
+	public boolean isConnected() {
+		return (loginStatus == LoginStatus.CONNECTED_STATUS) && socket.isConnected();
+	}
+	
+	public void reconnect() throws WhatsAppException
+	{
+		if(password == null) {
+			throw new WhatsAppException("No password exists");
+		}
+		login();
 	}
 
 	/**
