@@ -14,6 +14,7 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -2716,6 +2717,11 @@ public class WhatsApi {
 				}
 			} catch (SocketTimeoutException e) {
 
+			} catch (SocketException e) {
+				log.error("Exception reading from socket: "+e.getMessage());
+				socket.close();
+				socket = null;
+				disconnect();
 			}
 		}
 		byte[] outBytes = out.toByteArray();
