@@ -11,13 +11,14 @@ import java.util.Map;
 
 import net.sumppen.whatsapi4j.tools.BinHex;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BinTreeNodeReader {
 
 	private KeyStream key;
 	private byte[] input;
-	private final Logger log = Logger.getLogger(BinTreeNodeReader.class);
+	private final Logger log = LoggerFactory.getLogger(BinTreeNodeReader.class);
 
 	public void resetKey() {
 		this.key = null;

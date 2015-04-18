@@ -1,5 +1,10 @@
 package net.sumppen.whatsapi4j.message;
 
+import java.util.Date;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.sumppen.whatsapi4j.ProtocolNode;
 
 public class BasicMessage implements Message {
@@ -8,12 +13,23 @@ public class BasicMessage implements Message {
 	private final ProtocolNode node;
 	private final String from;
 	private final String groupId;
+	private final Date date;
+	protected final Logger log = LoggerFactory.getLogger(BasicMessage.class);
 	
 	public BasicMessage(MessageType type, ProtocolNode node, String from, String groupId) {
 		this.type = type;
 		this.node = node;
 		this.from = from;
 		this.groupId = groupId;
+		String t = node.getAttribute("t");
+		log.debug("t="+t);
+		if(t != null) {
+			long tl = Long.parseLong(t)*1000;
+			this.date = new Date(tl);
+		} else {
+			this.date = new Date();
+		}
+		log.debug("date = "+date);
 	}
 	
 	public MessageType getType() {
@@ -30,6 +46,10 @@ public class BasicMessage implements Message {
 
 	public String getGroupId() {
 		return groupId;
+	}
+
+	public Date getDate() {
+		return date;
 	}
 
 }

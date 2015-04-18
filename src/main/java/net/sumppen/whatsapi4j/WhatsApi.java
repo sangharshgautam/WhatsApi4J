@@ -14,6 +14,7 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -52,7 +53,8 @@ import net.sumppen.whatsapi4j.tools.BinHex;
 import net.sumppen.whatsapi4j.tools.CharsetUtils;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -77,7 +79,7 @@ public class WhatsApi {
 	private final String WHATSAPP_VER = "2.11.14";                // The WhatsApp version.
 	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.12.61 S40Version/14.26 Device/Nokia302";// User agent used in request/registration code.
 
-	private final Logger log = Logger.getLogger(WhatsApi.class);
+	private final Logger log = LoggerFactory.getLogger(WhatsApi.class);
 	private String identity;
 	private final String name;
 	private final String phoneNumber;
@@ -407,6 +409,10 @@ public class WhatsApi {
 	 */
 	public void loginWithPassword(String password) throws WhatsAppException {
 		this.password = password;
+		login();
+	}
+
+	private void login() throws WhatsAppException {
 		try {
 			doLogin();
 			if(loginStatus != LoginStatus.CONNECTED_STATUS) {
@@ -415,6 +421,18 @@ public class WhatsApi {
 		} catch (Exception e) {
 			throw new WhatsAppException(e);
 		}
+	}
+	
+	public boolean isConnected() {
+		return (loginStatus == LoginStatus.CONNECTED_STATUS) && socket.isConnected();
+	}
+	
+	public void reconnect() throws WhatsAppException
+	{
+		if(password == null) {
+			throw new WhatsAppException("No password exists");
+		}
+		login();
 	}
 
 	/**
@@ -1004,13 +1022,13 @@ public class WhatsApi {
 	 * @throws WhatsAppException 
 	 */
 	public void sendMessagePaused(String to) throws WhatsAppException {
-        HashMap<String, String> map = new HashMap<String, String>();
-        map.put("to",getJID(to));
-        ArrayList<ProtocolNode> list = new ArrayList<ProtocolNode>();
-        ProtocolNode status = new ProtocolNode("paused", null, null, null);
-        list.add(status);
-        ProtocolNode messageNode = new ProtocolNode("chatstate", map, list, null);
-        sendNode(messageNode);	}
+		HashMap<String, String> map = new HashMap<String, String>();
+		map.put("to",getJID(to));
+		ArrayList<ProtocolNode> list = new ArrayList<ProtocolNode>();
+		ProtocolNode status = new ProtocolNode("paused", null, null, null);
+		list.add(status);
+		ProtocolNode messageNode = new ProtocolNode("chatstate", map, list, null);
+		sendNode(messageNode);	}
 
 	/**
 	 * Send a video to the user/group.
@@ -1106,6 +1124,114 @@ public class WhatsApi {
 	public void sendSetProfilePicture(File image, File thumbnail) throws WhatsAppException {
 		sendSetPicture(phoneNumber,image, thumbnail);
 	}
+
+	public String sendSync(List<String> numbers, List<String> deletedNumbers, SyncType syncType, int index, boolean last) throws WhatsAppException
+	{
+		List<ProtocolNode> users = new LinkedList<ProtocolNode>();
+
+		for (String number : numbers ) { 
+			// number must start with '+' if international contact
+			if(number.length() > 1) {
+				if(!number.startsWith("+")) {
+					number = "+"+number;
+				}
+				ProtocolNode user = new ProtocolNode("user", null, null, number.getBytes());
+				users.add(user);
+			}
+		}
+
+		if (deletedNumbers != null && deletedNumbers.size() > 0) {
+			for (String number : deletedNumbers) {
+				Map<String,String> map = new HashMap<String, String>();
+				map.put("jid",getJID(number)); 
+				map.put("type", "delete");
+				ProtocolNode user = new ProtocolNode("user", map, null, null);
+				users.add(user);
+			}
+		}
+
+		String mode = null;
+		String context = null;
+		switch(syncType)
+		{
+		case FULL_REGISTRATION:
+			mode = "full";
+			context = "registration";
+			break;
+		case FULL_INTERACTIVE:
+			mode = "full";
+			context = "interactive";
+			break;
+		case FULL_BACKGROUND:
+			mode = "full";
+			context = "background";
+			break;
+		case DELTA_INTERACTIVE:
+			mode = "delta";
+			context = "interactive";
+			break;
+		case DELTA_BACKGROUND:
+			mode = "delta";
+			context = "background";
+			break;
+		case QUERY_INTERACTIVE:
+			mode = "query";
+			context = "interactive";
+			break;
+		case CHUNKED_REGISTRATION:
+			mode = "chunked";
+			context = "registration";
+			break;
+		case CHUNKED_INTERACTIVE:
+			mode = "chunked";
+			context = "interactive";
+			break;
+		case CHUNKED_BACKGROUND:
+			mode = "chunked";
+			context = "background";
+			break;
+		default:
+			mode = "delta";
+			context = "background";
+		}
+
+		String id = createMsgId("sendsync_");
+		Date now = new Date();
+		long longSid = ((now.getTime() + 11644477200L) * 10000);
+		String sid = Long.toString(longSid);
+
+		Map<String,String> syncMap = new HashMap<String, String>();
+		syncMap.put("mode", mode);
+		syncMap.put("context", context);
+		syncMap.put("sid", sid);
+		syncMap.put("index", ""+index);
+		syncMap.put("last", (last ? "true" : "false"));
+
+		ProtocolNode syncNode = new ProtocolNode("sync",
+				syncMap, users, null);
+
+		Map<String,String> nodeMap = new HashMap<String, String>();
+		nodeMap.put("id", id);
+		nodeMap.put("xmlns", "urn:xmpp:whatsapp:sync");
+		nodeMap.put("type", "get");
+
+		List<ProtocolNode> nodeList = new LinkedList<ProtocolNode>();
+		nodeList.add(syncNode);
+
+		ProtocolNode node = new ProtocolNode("iq",
+				nodeMap, nodeList, null);
+
+		sendNode(node);
+		try {
+			waitForServer(id);
+		} catch (Exception e) {
+			log.error("Failed to wait for server: "+e.getMessage());
+			throw new WhatsAppException("Failed while waiting for server", e);
+		}
+
+		return id;
+	}
+
 
 	/**
 	 * Set your profile picture
@@ -1334,7 +1460,7 @@ public class WhatsApi {
 		query.put("c","cookie");
 
 		JSONObject response = getResponse(host, query);
-		log.debug(response);
+		log.debug(response.toString());
 		if (!response.getString("status").equals("ok")) {
 			throw new WhatsAppException("There was a problem trying to request the code. Status="+response.getString("status"));
 		} else {
@@ -1391,22 +1517,22 @@ public class WhatsApi {
 			}
 
 		} catch (FileNotFoundException e) {
-			log.warn(e);
+			log.warn("File not found",e);
 		} catch (IOException e) {
-			log.warn(e);
+			log.warn("IO exception", e);
 		} finally {
 			if (br != null) {
 				try {
 					br.close();
 				} catch (IOException e) {
-					log.warn(e);
+					log.warn("IO exception", e);
 				}
 			}
 			if(is != null) {
 				try {
 					is.close();
 				} catch (IOException e) {
-					log.warn(e);
+					log.warn("IO exception", e);
 				}
 			}
 		}		
@@ -1871,7 +1997,7 @@ public class WhatsApi {
 			addServerReceivedId(node.getAttribute("id"));
 
 			if (child != null) {
-				if (child.getTag().equals(ProtocolTag.QUERY)) {
+				if (child.getTag().equals(ProtocolTag.QUERY.toString())) {
 					if (child.getAttribute("xmlns").equals("jabber:iq:privacy")) {
 						// ToDo: We need to get explicitly list out the children as arguments
 						//       here.
@@ -1886,81 +2012,116 @@ public class WhatsApi {
 								node.getAttribute("from"),
 								node.getAttribute("id"),
 								child.getAttribute("seconds")
-								);				}
+								);				
+					}
 				}
+				if(child.getTag().equals(ProtocolTag.SYNC.toString())) {
+					//sync result
+					ProtocolNode sync = child;
+					ProtocolNode existing = sync.getChild("in");
+					ProtocolNode nonexisting = sync.getChild("out");
+
+					//process existing first
+					Map<String,String> existingUsers = new HashMap<String, String>();
+					if (existing != null) {
+						for(ProtocolNode eChild : existing.getChildren()) {
+							existingUsers.put(new String(eChild.getData()),eChild.getAttribute("jid"));
+						}
+					}
+
+					//now process failed numbers
+					List<String> failedNumbers = new LinkedList<String>();
+					if (nonexisting != null) {
+						for (ProtocolNode neChild : nonexisting.getChildren()) {
+							failedNumbers.add(new String(neChild.getData()));
+						}
+					}
+
+					String index = sync.getAttribute("index");
+
+					SyncResult result = new SyncResult(index, sync.getAttribute("sid"), existingUsers, failedNumbers);
+					if(log.isDebugEnabled()) {
+						log.debug("Sync result: "+result.toString());
+					}
+					Event event = new Event(EventType.SYNC_RESULTS, phoneNumber);
+					event.setEventSpecificData(result);
+
+					eventManager.fireEvent(event);
+				}
+				messageQueue.add(node);
 			}
-			messageQueue.add(node);
-		}
-		if (child != null && child.getTag().equals("props")) {
-			//server properties
-			Map<String,String> props = new LinkedHashMap<String,String>();
-			for(ProtocolNode c : child.getChildren()) {
-				props.put(c.getAttribute("name"),c.getAttribute("value"));
+			if (child != null && child.getTag().equals("props")) {
+				//server properties
+				Map<String,String> props = new LinkedHashMap<String,String>();
+				for(ProtocolNode c : child.getChildren()) {
+					props.put(c.getAttribute("name"),c.getAttribute("value"));
+				}
+				eventManager.fireGetServerProperties(
+						phoneNumber,
+						child.getAttribute("version"),
+						props
+						);
 			}
-			eventManager.fireGetServerProperties(
-					phoneNumber,
-					child.getAttribute("version"),
-					props
-					);
-		}
-		if (child != null && child.getTag().equals("picture")) {
-			eventManager.fireGetProfilePicture(
-					phoneNumber,
-					node.getAttribute("from"),
-					child.getAttribute("type"),
-					child.getData()
-					);
-		}
-		if (child != null && child.getTag().equals("media")) {
-			processUploadResponse(node);
-		}
-		if (child != null && child.getTag().equals("duplicate")) {
-			processUploadResponse(node);
-		}
-		if (node.nodeIdContains("group")) {
-			//There are multiple types of Group reponses. Also a valid group response can have NO children.
-			//Events fired depend on text in the ID field.
-			List<ProtocolNode> groupList = null;
-			String groupId = null;
-			if (child != null) {
-				groupList = child.getChildren();
+			if (child != null && child.getTag().equals("picture")) {
+				eventManager.fireGetProfilePicture(
+						phoneNumber,
+						node.getAttribute("from"),
+						child.getAttribute("type"),
+						child.getData()
+						);
 			}
-			if(node.nodeIdContains("creategroup")){
-				groupId = child.getAttribute("id");
-				Event event = new Event(EventType.GROUP_CREATE, phoneNumber);
-				event.setData(groupList);
-				event.setGroupId(groupId);
-				eventManager.fireEvent(event);
+			if (child != null && child.getTag().equals("media")) {
+				processUploadResponse(node);
 			}
-			if(node.nodeIdContains("endgroup")){
-				groupId = child.getChild(0).getAttribute("id");
-				Event event = new Event(EventType.GROUP_END, phoneNumber);
-				event.setData(groupList);
-				event.setGroupId(groupId);
-				eventManager.fireEvent(event);
+			if (child != null && child.getTag().equals("duplicate")) {
+				processUploadResponse(node);
 			}
-			if(node.nodeIdContains("getgroups")){
-				Event event = new Event(EventType.GET_GROUPS, phoneNumber);
-				event.setData(groupList);
-				eventManager.fireEvent(event);
+			if (node.nodeIdContains("group")) {
+				//There are multiple types of Group reponses. Also a valid group response can have NO children.
+				//Events fired depend on text in the ID field.
+				List<ProtocolNode> groupList = null;
+				String groupId = null;
+				if (child != null) {
+					groupList = child.getChildren();
+				}
+				if(node.nodeIdContains("creategroup")){
+					groupId = child.getAttribute("id");
+					Event event = new Event(EventType.GROUP_CREATE, phoneNumber);
+					event.setData(groupList);
+					event.setGroupId(groupId);
+					eventManager.fireEvent(event);
+				}
+				if(node.nodeIdContains("endgroup")){
+					groupId = child.getChild(0).getAttribute("id");
+					Event event = new Event(EventType.GROUP_END, phoneNumber);
+					event.setData(groupList);
+					event.setGroupId(groupId);
+					eventManager.fireEvent(event);
+				}
+				if(node.nodeIdContains("getgroups")){
+					Event event = new Event(EventType.GET_GROUPS, phoneNumber);
+					event.setData(groupList);
+					eventManager.fireEvent(event);
+
+				}
+				if(node.nodeIdContains("getgroupinfo")){
+					Event event = new Event(EventType.GET_GROUPINFO, phoneNumber);
+					event.setData(groupList);
+					eventManager.fireEvent(event);
+				}
+				if(node.nodeIdContains("getgroupparticipants")){
+					groupId = parseJID(node.getAttribute("from"));
+					Event event = new Event(EventType.GET_GROUPS, phoneNumber);
+					event.setData(groupList);
+					event.setGroupId(groupId);
+					eventManager.fireEvent(event);
+				}
 
 			}
-			if(node.nodeIdContains("getgroupinfo")){
-				Event event = new Event(EventType.GET_GROUPINFO, phoneNumber);
-				event.setData(groupList);
-				eventManager.fireEvent(event);
-			}
-			if(node.nodeIdContains("getgroupparticipants")){
-				groupId = parseJID(node.getAttribute("from"));
-				Event event = new Event(EventType.GET_GROUPS, phoneNumber);
-				event.setData(groupList);
-				event.setGroupId(groupId);
-				eventManager.fireEvent(event);
-			}
 
-		}
-		if (node.getTag().equals("iq") && node.getAttribute("type").equals("error")) {
-			addServerReceivedId(node.getAttribute("id"));
+			if (node.getTag().equals("iq") && node.getAttribute("type").equals("error")) {
+				addServerReceivedId(node.getAttribute("id"));
+			}
 		}
 
 	}
@@ -2367,7 +2528,7 @@ public class WhatsApi {
 					);
 		}
 		if (node.getAttribute("type").equals("subject")) {
-			log.debug(node);
+			log.debug(node.toString());
 			String[] reset_from = node.getAttribute("from").split("@");
 			String[] reset_author = node.getAttribute("author").split("@");
 			eventManager.fireGetGroupsSubject(
@@ -2556,6 +2717,11 @@ public class WhatsApi {
 				}
 			} catch (SocketTimeoutException e) {
 
+			} catch (SocketException e) {
+				log.error("Exception reading from socket: "+e.getMessage());
+				socket.close();
+				socket = null;
+				disconnect();
 			}
 		}
 		byte[] outBytes = out.toByteArray();

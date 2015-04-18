@@ -2,12 +2,13 @@ package net.sumppen.whatsapi4j;
 
 import java.net.SocketTimeoutException;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MessagePoller extends Thread {
 	private boolean running = true;
 	private final WhatsApi wa;
-	private final Logger log = Logger.getLogger(MessagePoller.class);
+	private final Logger log = LoggerFactory.getLogger(MessagePoller.class);
 
 	public MessagePoller(WhatsApi wa) {
 		this.wa = wa;

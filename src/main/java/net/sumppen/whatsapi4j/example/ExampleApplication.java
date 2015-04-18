@@ -5,20 +5,19 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
-import java.net.URL;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.logging.Level;
 
 import net.sumppen.whatsapi4j.EventManager;
 import net.sumppen.whatsapi4j.MessageProcessor;
+import net.sumppen.whatsapi4j.SyncType;
 import net.sumppen.whatsapi4j.WhatsApi;
 import net.sumppen.whatsapi4j.WhatsAppException;
 
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Layout;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
 
 /**
  * Example application
@@ -28,22 +27,17 @@ import org.json.JSONObject;
  */
 public class ExampleApplication {
 	private enum WhatsAppCommand {
-		send,request,register,status,text,sendText,image,sendImage,video,sendVideo,groups
+		send,request,register,status,text,sendText,image,sendImage,video,sendVideo,groups,sync
 	}
 
 	public static boolean running = true;
 	
 	public static void main(String[] args) {
 		boolean loggedIn = false;
-		Logger.getRootLogger().setLevel(Level.ALL);
-		Layout layout = new PatternLayout("%d [%t] %-5p %c %x - %m%n");
 		String filename = "exampleapplication.log";
-		try {
-			Logger.getRootLogger().addAppender(new FileAppender(layout, filename));
-		} catch (IOException e1) {
-			System.err.println("Failed to open logfile");
-			e1.printStackTrace();
-		}
+		System.setProperty("org.slf4j.simpleLogger.logFile", filename);
+		System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
+		System.setProperty("org.slf4j.simpleLogger.showDateTime", "true");
 		if(args.length != 4) {
 			System.out.println("Usage: ExampleApplication <username> <password> <id> <nick>");
 			System.exit(1);
@@ -88,6 +82,13 @@ public class ExampleApplication {
 				try {
 					WhatsAppCommand wac = WhatsAppCommand.valueOf(cmd);
 					switch(wac) {
+					case sync:
+						if(loggedIn) {
+							syncContacts(cons,wa);
+						} else {
+							System.out.println("Not logged in!");
+						}
+						break;
 					case send:
 					case text:
 					case sendText:
@@ -166,6 +167,18 @@ public class ExampleApplication {
 		}
 	}
 
+	private static void syncContacts(Console cons, WhatsApi wa) throws WhatsAppException {
+		List<String> contacts = new LinkedList<String>();
+		String contact;
+		do {
+			System.out.print("Add contact (finish with empty): ");
+			contact = cons.readLine();
+			contacts.add(contact);
+		} while(contact.length() > 0);
+		wa.sendSync(contacts, null, SyncType.DELTA_BACKGROUND, 0, true);
+		System.out.println("Sync sent");
+	}
+
 	private static void getGroups(Console cons, WhatsApi wa) throws WhatsAppException {
 		wa.getGroups();
 	}
@@ -201,8 +214,10 @@ public class ExampleApplication {
 		if(to == null || to.length() == 0) {
 			return;
 		}
+		wa.sendMessageComposing(to);
 		System.out.print("Message: ");
 		String message = cons.readLine();
+		wa.sendMessagePaused(to);
 		if(message == null || message.length() == 0) {
 			return;
 		}

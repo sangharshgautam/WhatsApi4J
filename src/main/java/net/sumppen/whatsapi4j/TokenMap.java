@@ -1,6 +1,7 @@
 package net.sumppen.whatsapi4j;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TokenMap {
 
@@ -469,7 +470,7 @@ public class TokenMap {
 	      "transport",
 	      "call-id"	
 	};
-	private static final Logger log = Logger.getLogger(TokenMap.class);
+	private static final Logger log = LoggerFactory.getLogger(TokenMap.class);
 	
     public static Token tryGetToken(String string)
     {

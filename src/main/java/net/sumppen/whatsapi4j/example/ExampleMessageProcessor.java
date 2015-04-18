@@ -10,7 +10,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.io.Files;
 
@@ -80,10 +81,10 @@ public class ExampleMessageProcessor implements MessageProcessor {
 			TextMessage msg = (TextMessage)message;
 			if(msg.getGroupId() != null && !msg.getGroupId().isEmpty()) {
 				//Group message
-				System.out.println(msg.getFrom()+"("+msg.getGroupId()+") ::: "+msg.getText());
+				System.out.println(msg.getDate()+" :: "+msg.getFrom()+"("+msg.getGroupId()+"): "+msg.getText());
 			} else {
 				//Private message
-				System.out.println(msg.getFrom()+" ::: "+msg.getText());
+				System.out.println(msg.getDate()+" :: "+msg.getFrom()+" : "+msg.getText());
 			}
 			break;
 		default:

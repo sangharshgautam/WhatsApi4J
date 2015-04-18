@@ -8,14 +8,15 @@ import java.util.Arrays;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class KeyStream {
 
 	private final RC4 rc4;
 	private final byte[] key;
 	private final byte[] macKey;
-	private final Logger log = Logger.getLogger(KeyStream.class);
+	private final Logger log = LoggerFactory.getLogger(KeyStream.class);
 	public int seq=0;
 
 	public KeyStream(byte[] key, byte[] macKey) {
@@ -90,7 +91,7 @@ public class KeyStream {
 		private int i;
 		private int j;
 		private byte[] s;
-		private final Logger log = Logger.getLogger(RC4.class);
+		private final Logger log = LoggerFactory.getLogger(RC4.class);
 
 		public RC4(byte[] key, int drop) {
 			s = range(0,255);
