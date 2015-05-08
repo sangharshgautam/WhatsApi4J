@@ -427,7 +427,7 @@ public class WhatsApi {
 	}
 	
 	public boolean isConnected() {
-		return (loginStatus == LoginStatus.CONNECTED_STATUS) && socket.isConnected();
+		return (loginStatus == LoginStatus.CONNECTED_STATUS) && socket != null && socket.isConnected();
 	}
 	
 	public void reconnect() throws WhatsAppException
