@@ -1,0 +1,9 @@
+/target/
+<<<<<<< HEAD
+/exampleapplication.log
+/password.txt
+=======
+>>>>>>> branch 'master' of https://github.com/klutzer/WhatsApi4J.git
+.settings/
+.project
+.classpath
