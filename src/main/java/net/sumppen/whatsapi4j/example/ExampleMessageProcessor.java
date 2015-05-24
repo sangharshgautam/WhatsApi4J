@@ -1,24 +1,15 @@
 package net.sumppen.whatsapi4j.example;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Date;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.io.Files;
 
 import net.sumppen.whatsapi4j.MessageProcessor;
 import net.sumppen.whatsapi4j.ProtocolNode;
 import net.sumppen.whatsapi4j.message.Message;
 import net.sumppen.whatsapi4j.message.TextMessage;
+
+import com.google.common.io.Files;
 
 public class ExampleMessageProcessor implements MessageProcessor {
 

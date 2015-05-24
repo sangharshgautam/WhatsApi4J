@@ -67,8 +67,8 @@ import org.json.JSONObject;
  */
 public class WhatsApi {
 
-	private static final String RELEASE_TOKEN_CONST = "PdA2DJyKoUrwLw1Bg6EIhzh502dF9noR9uFCllGk1419900749520";
-	private static final String RELEASE_TIME = "1430860548912";
+	private static final String RELEASE_TOKEN_CONST = "PdA2DJyKoUrwLw1Bg6EIhzh502dF9noR9uFCllGk";
+	private static final String RELEASE_TIME = "1419900749520";
 	private final int PORT = 443;                                      // The port of the WhatsApp server.
 	private final int TIMEOUT_SEC = 2;                                  // The timeout for the connection with the WhatsApp servers.
 	private final String WHATSAPP_CHECK_HOST = "v.whatsapp.net/v2/exist";  // The check credentials host.
@@ -1764,10 +1764,10 @@ public class WhatsApi {
 		while (node != null) {
 			ProtocolTag tag;
 			try {
-				tag = ProtocolTag.fromString(node.getTag().replace(':', '_').toUpperCase());
+				tag = ProtocolTag.fromString(node.getTag());
 				if(tag == null) {
 					tag = ProtocolTag.UNKNOWN;
-					log.info("Unknown/Unused tag "+node.getTag());
+					log.info("Unknown/Unused tag (null) "+node.getTag());
 				}
 			} catch (IllegalArgumentException e) {
 				tag = ProtocolTag.UNKNOWN;
@@ -1812,7 +1812,7 @@ public class WhatsApi {
 				processChatState(node);
 				break;
 			case STREAM_ERROR:
-				throw new WhatsAppException("stream:error received: ");
+				throw new WhatsAppException("stream:error received: "+node);
 			case PING:
 				break;
 			case QUERY:

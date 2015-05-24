@@ -2,12 +2,11 @@ package net.sumppen.whatsapi4j.example;
 
 import java.io.Console;
 import java.io.File;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Level;
 
 import net.sumppen.whatsapi4j.EventManager;
 import net.sumppen.whatsapi4j.MessageProcessor;
@@ -17,7 +16,6 @@ import net.sumppen.whatsapi4j.WhatsAppException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.slf4j.Logger;
 
 /**
  * Example application
@@ -27,7 +25,7 @@ import org.slf4j.Logger;
  */
 public class ExampleApplication {
 	private enum WhatsAppCommand {
-		send,request,register,status,text,sendText,image,sendImage,video,sendVideo,groups,sync
+		send,request,register,status,text,sendText,image,sendImage,video,sendVideo,groups,sync,help,exit
 	}
 
 	public static boolean running = true;
@@ -143,6 +141,12 @@ public class ExampleApplication {
 						} else {
 							System.out.println("Not logged in!");
 						}
+						break;
+					case exit:
+						running = false;
+						break;
+					case help:
+						System.out.println("Allowed commands: "+Arrays.toString(WhatsAppCommand.values()));
 						break;
 					default: 
 						System.out.println("Unknown command: "+cmd);
