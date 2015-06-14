@@ -43,7 +43,6 @@ public class BinTreeNodeReader {
 	public ProtocolNode nextTree(byte[] readData) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, InvalidKeyException, NoSuchAlgorithmException, DecodeException {
 		if(readData != null) {
 			input = readData;
-//			log.debug("Input ="+BinHex.bin2hex(readData));
 		}
 		
 		int firstByte  = peekInt8(0);
