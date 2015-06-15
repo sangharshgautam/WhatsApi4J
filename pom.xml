@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>net.sumppen.whatsapp</groupId>
 	<artifactId>whatsapi4j</artifactId>
-	<version>1.0.0-SNAPSHOT</version>
+	<version>1.0.1-SNAPSHOT</version>
 	<name>WhatsApp API for Java</name>
 	<dependencies>
 		<dependency>
