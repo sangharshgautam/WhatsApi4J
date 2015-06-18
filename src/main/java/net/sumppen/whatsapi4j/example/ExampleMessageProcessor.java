@@ -1,16 +1,15 @@
 package net.sumppen.whatsapi4j.example;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Date;
 
 import net.sumppen.whatsapi4j.MessageProcessor;
 import net.sumppen.whatsapi4j.ProtocolNode;
 import net.sumppen.whatsapi4j.message.Message;
 import net.sumppen.whatsapi4j.message.TextMessage;
-
-import com.google.common.io.Files;
-
 public class ExampleMessageProcessor implements MessageProcessor {
 
 	public void processMessage(ProtocolNode message) {
@@ -56,13 +55,13 @@ public class ExampleMessageProcessor implements MessageProcessor {
 	}
 
 	private void writePreview(String pathname, byte[] preview) {
-		File path = new File(pathname);
+		Path path = Paths.get(pathname);
 		try {
-			Files.write(preview, path);
+			Files.write(path, preview);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		System.out.println("Preview: "+path.getAbsolutePath());
+		System.out.println("Preview: "+path.toString());
 	}
 
 	public void processMessage(Message message) {
