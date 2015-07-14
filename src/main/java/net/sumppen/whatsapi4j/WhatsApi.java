@@ -41,8 +41,19 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Hex;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.filter.LoggingFilter;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.sumppen.whatsapi4j.events.Event;
 import net.sumppen.whatsapi4j.events.EventType;
+import net.sumppen.whatsapi4j.example.ExampleApplication;
+import net.sumppen.whatsapi4j.example.ExampleMessagePoller;
 import net.sumppen.whatsapi4j.message.AudioMessage;
 import net.sumppen.whatsapi4j.message.BasicMessage;
 import net.sumppen.whatsapi4j.message.ImageMessage;
@@ -53,15 +64,6 @@ import net.sumppen.whatsapi4j.message.TextMessage;
 import net.sumppen.whatsapi4j.message.VideoMessage;
 import net.sumppen.whatsapi4j.tools.BinHex;
 import net.sumppen.whatsapi4j.tools.CharsetUtils;
-
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.filter.LoggingFilter;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Java adaptation of PHP WhatsAPI by venomous0x
@@ -83,8 +85,8 @@ public class WhatsApi {
 	private final String WHATSAPP_REQUEST_HOST = "v.whatsapp.net/v2/code";      // The request code host.
 	public static final String WHATSAPP_SERVER = "s.whatsapp.net";               // The hostname used to login/send messages.
 	private final String WHATSAPP_DEVICE = "S40";                      // The device name.
-	private final String WHATSAPP_VER = "2.12.81";                // The WhatsApp version.
-	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.12.81 S40Version/14.26 Device/Nokia302";// User agent used in request/registration code.
+	private final String WHATSAPP_VER = "2.12.82";                // The WhatsApp version.
+	private final String WHATSAPP_USER_AGENT = "WhatsApp/2.12.82 S40Version/14.26 Device/Nokia302";// User agent used in request/registration code.
 	private final String WHATSAPP_VER_CHECKER = "https://coderus.openrepos.net/whitesoft/whatsapp_version"; // Check WhatsApp version
 
 	private final Logger log = LoggerFactory.getLogger(WhatsApi.class);
@@ -313,18 +315,7 @@ public class WhatsApi {
 	protected String generateRequestToken(String country, String phone) throws IOException, NoSuchAlgorithmException {
 		return WhatsMediaUploader.md5(RELEASE_TOKEN_CONST+RELEASE_TIME+phone);
 	}
-	public static void main(String[] args) throws NoSuchAlgorithmException, WhatsAppException, IOException {
-		byte[] bytes = new byte[20];
-		new Random().nextBytes(bytes);
-		String str = new String(bytes, StandardCharsets.ISO_8859_1);
-		System.out.println(URLEncoder.encode(str, "UTF-8"));
-		
-	}
-	private static void test(String phone) throws NoSuchAlgorithmException{
-		String filepath = "PdA2DJyKoUrwLw1Bg6EIhzh502dF9noR9uFCllGk"+"1430860548912"+phone;
-		System.out.println(DigestUtils.md5Hex(filepath));
-		
-	}
+
 	private byte[] hash(String algo, byte[] dataBytes) throws NoSuchAlgorithmException {
 		MessageDigest md;
 
@@ -1589,9 +1580,11 @@ public class WhatsApi {
 		sendData(data);
 		sendNode(feat);
 		sendNode(auth);
-
+		System.out.println("POll 1");
 		pollMessages();
+		System.out.println("POll 2");
 		pollMessages();
+		System.out.println("POll 3");
 		pollMessages();
 
 		if(challengeData != null) {
@@ -1659,6 +1652,7 @@ public class WhatsApi {
 	 * @throws IOException 
 	 */
 	byte[] authenticate() throws EncodeException, IOException {
+		System.out.println("CHALLENGE DATA-->"+new String(this.challengeData));
 		List<byte[]> keys = generateKeys();
 		inputKey = new KeyStream(keys.get(2), keys.get(3));
 		outputKey = new KeyStream(keys.get(0), keys.get(1));
@@ -1677,7 +1671,23 @@ public class WhatsApi {
 			for(int i = 0; i < 4; ++i) {
 				ByteArrayOutputStream nonce = getChallengeData();
 				nonce.write(i+1);
+				System.out.println("KEY-->"+new String(Hex.encodeHex(nonce.toByteArray())));
 				byte[] key = pbkdf2("SHA-1", base64_decode(password), nonce.toByteArray(), 2, 20,true);
+				keys.add(key);
+			}
+			return keys;
+		} catch (Exception e) {
+			throw new EncodeException(e);
+		}
+	}
+	List<byte[]> generateKeys2() throws EncodeException {
+		try {
+			List<byte[]> keys = new LinkedList<byte[]>();
+			for(int i = 0; i < 4; ++i) {
+				ByteArrayOutputStream nonce = getChallengeData();
+				nonce.write(i+1);
+				System.out.println("KEY-->"+new String(Hex.encodeHex(nonce.toByteArray())));
+				byte[] key = pbkdf2("SHA-1", base64_decode(password), nonce.toByteArray(), 16, 20,true);
 				keys.add(key);
 			}
 			return keys;
@@ -1753,6 +1763,7 @@ public class WhatsApi {
 	}
 
 	private void processInboundData(byte[] readData) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
+		System.out.println(new String(readData));
 		if(readData == null || readData.length == 0) {
 			return;
 		}
@@ -1779,6 +1790,7 @@ public class WhatsApi {
 	 */
 	private void processInboundDataNode(ProtocolNode node) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
 		while (node != null) {
+			System.out.println(node.toString());
 			ProtocolTag tag;
 			try {
 				tag = ProtocolTag.fromString(node.getTag().replace(':', '_').toUpperCase());
@@ -1837,6 +1849,8 @@ public class WhatsApi {
 			case START:
 				break;
 			case UNKNOWN:
+				break;
+			case STREAM_FEATURES:
 				break;
 			default:
 				break;
@@ -1919,7 +1933,7 @@ public class WhatsApi {
 		if(type.equals("features")) {
 
 		}
-		sendNotificationAck(node);
+		//sendNotificationAck(node);
 	}
 
 	private void addServerReceivedId(String receivedId) {
@@ -2745,6 +2759,12 @@ public class WhatsApi {
 			}
 		}
 		byte[] outBytes = out.toByteArray();
+		try {
+			System.out.println("IN-->"+toHex(outBytes));
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return outBytes;
 	}
 
@@ -2752,6 +2772,7 @@ public class WhatsApi {
 		try {
 			byte[] data = writer.write(node, true);
 			log.debug("tx: "+node.toString());
+			System.out.println("tx: "+node.toString());
 			sendData(data);
 		} catch (Exception e) {
 			throw new WhatsAppException("Failed to send node", e);
@@ -2791,7 +2812,7 @@ public class WhatsApi {
 		if(challengeData != null) {
 			// TODO
 			//			byte[] key = pbkdf2("PBKDF2WithHmacSHA1", base64_decode(password), challengeData, 16, 20, true);
-			List<byte[]> keys = generateKeys();
+			List<byte[]> keys = generateKeys2();
 			inputKey = new KeyStream(keys.get(2), keys.get(3));
 			outputKey = new KeyStream(keys.get(0), keys.get(1));
 			reader.setKey(inputKey);
@@ -3066,5 +3087,39 @@ public class WhatsApi {
 	public KeyStream getOutputKey() {
 		return outputKey;
 	}
+	public static void main(String[] args) throws UnknownHostException, IOException {
+		String username = "919958674455";
+		String password = "DtxDKz+/hCfY2V/B1IHJ2034ydQ=";
+		String identity = ExampleApplication.decodeIdentity("%C3%AD%094%C3%B6%C2%A7a%C2%897WX%21%C2%BD%0D%5E%C3%8F%C3%88%C2%98%3C%C2%BB%2B");
+		String nickname = "sangharsh";
+		WhatsApi wa = null;
+		try {
+			wa = new WhatsApi(username, identity, nickname);
 
+			if(!wa.connect()) {
+				System.out.println("Failed to connect to WhatsApp");
+				System.exit(1);
+			}
+			if(password != null) {
+				wa.loginWithPassword(password);
+				ExampleMessagePoller poller = new ExampleMessagePoller(wa);
+				poller.start();
+				//wa.sendMessage("447786092600", "Test Sangharsh");
+			}
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (WhatsAppException e) {
+			e.printStackTrace();
+		}finally{
+			if(wa!=null){
+//				wa.disconnect();
+			}
+		}
+		
+	}
+	public static String decodeIdentity(String encodedIdentity) throws UnsupportedEncodingException{
+		return URLDecoder.decode(encodedIdentity, StandardCharsets.UTF_8.toString());
+	}
 }
+//447826386172
+//weC8NfHQoId249PGhd8VICzraC0=
