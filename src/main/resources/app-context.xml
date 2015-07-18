@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:beans="http://www.springframework.org/schema/beans"
+  xmlns:context="http://www.springframework.org/schema/context"
+  xsi:schemaLocation="
+    http://www.springframework.org/schema/beans 
+    http://www.springframework.org/schema/beans/spring-beans.xsd 
+    http://www.springframework.org/schema/context 
+    http://www.springframework.org/schema/context/spring-context.xsd">
+ 
+ 
+  <context:component-scan base-package="org.sangharsh.demo, net.sumppen.whatsapi4j" />
+ 
+  <bean id="whatsApi" class="net.sumppen.whatsapi4j.WhatsApi">
+  		<constructor-arg index="0" value="919958674455" />
+  		<constructor-arg index="1" value="DtxDKz+/hCfY2V/B1IHJ2034ydQ=" />
+  		<constructor-arg index="2" value="Sangharsh" />
+  </bean>
+  
+  <bean id="incomingMsgProcessor" class="org.sangharsh.demo.IncomingMessageProcessor" />
+  
+  <bean id="incomingMsgQueue" class="org.apache.activemq.command.ActiveMQQueue">
+  		<constructor-arg index="0" value="WA.INCOMING.MSG" />
+  </bean>
+  		
+  <!-- =============================================== -->
+  <!-- JMS Common, Define JMS connectionFactory       -->
+  <!-- =============================================== -->
+  <!-- Activemq connection factory -->
+  <bean id="amqConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+    <!-- brokerURL, You may have different IP or port -->
+    <constructor-arg index="0" value="vm://activemq-waclient.rhcloud.com" />
+  </bean>
+ 
+  <!-- Pooled Spring connection factory -->
+  <bean id="connectionFactory"
+    class="org.springframework.jms.connection.CachingConnectionFactory">
+    <constructor-arg ref="amqConnectionFactory" />
+  </bean>
+ 
+  <!-- ======================================================= -->
+  <!-- JMS Send, define default destination and JmsTemplate    -->
+  <!-- ======================================================= -->
+  <!-- Default Destination Queue Definition -->
+ <!--  <bean id="defaultDestination" class="org.apache.activemq.command.ActiveMQQueue">
+    name of the queue
+    <constructor-arg index="0" value="Send2Recv" />
+  </bean> -->
+ 
+  <!-- JmsTemplate Definition -->
+  <bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+    <property name="connectionFactory" ref="connectionFactory" />
+    <property name="defaultDestination" ref="incomingMsgQueue" />
+  </bean>
+ 
+  <!-- ============================================================= -->
+  <!-- JMS receive.                                                  -->
+  <!-- Define MessageListenerAdapter and MessageListenerContainer    -->
+  <!-- ============================================================= -->
+<!--   <bean id="messageListenerAdapter"
+    class="org.springframework.jms.listener.adapter.MessageListenerAdapter">
+    <constructor-arg ref="jmsMessageListener" />
+  </bean>
+   
+  <bean id="messageListenerContainer"
+    class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+    <property name="connectionFactory" ref="connectionFactory" />
+    <property name="destinationName" value="incomingMsgQueue" />
+    <property name="messageListener" ref="messageListenerAdapter" />
+  </bean> -->
+ 
+</beans>

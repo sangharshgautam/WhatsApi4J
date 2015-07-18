@@ -346,7 +346,8 @@ public class WhatsApi {
 			socket.connect(socketAddress);
 		}
 		if(socket.isConnected()) {
-			socket.setSoTimeout(TIMEOUT_SEC*1000);
+			socket.setSoTimeout(TIMEOUT_SEC*1000000);
+//			socket.setKeepAlive(true);
 			return true;
 		} else {
 			log.warn("Failed to connect to WhatsApp server");
@@ -1763,12 +1764,12 @@ public class WhatsApi {
 	}
 
 	private void processInboundData(byte[] readData) throws IncompleteMessageException, InvalidMessageException, InvalidTokenException, IOException, WhatsAppException, JSONException, NoSuchAlgorithmException, InvalidKeyException, DecodeException {
-		System.out.println(new String(readData));
 		if(readData == null || readData.length == 0) {
 			return;
 		}
 		ProtocolNode node = reader.nextTree(readData);
 		if(node != null) {
+			System.out.println(node.toString());
 			processInboundDataNode(node);
 		}
 	}
@@ -1817,6 +1818,7 @@ public class WhatsApi {
 				log.error("Failure");
 				break;
 			case MESSAGE:
+				System.out.println("MESSAGE: "+node.toString());
 				processMessage(node);
 				break;
 			case ACK:
@@ -1933,7 +1935,7 @@ public class WhatsApi {
 		if(type.equals("features")) {
 
 		}
-		//sendNotificationAck(node);
+		sendNotificationAck(node);
 	}
 
 	private void addServerReceivedId(String receivedId) {
@@ -2759,12 +2761,12 @@ public class WhatsApi {
 			}
 		}
 		byte[] outBytes = out.toByteArray();
-		try {
+		/*try {
 			System.out.println("IN-->"+toHex(outBytes));
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		}*/
 		return outBytes;
 	}
 

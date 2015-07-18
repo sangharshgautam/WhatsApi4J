@@ -1,4 +1,4 @@
-package net.sumppen.whatsapi4j.example;
+package org.sangharsh.demo;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -7,15 +7,36 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
 
+import javax.jms.JMSException;
+import javax.jms.ObjectMessage;
+import javax.jms.Queue;
+import javax.jms.Session;
+
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.core.MessageCreator;
+import org.springframework.stereotype.Service;
 
 import net.sumppen.whatsapi4j.MessageProcessor;
 import net.sumppen.whatsapi4j.ProtocolNode;
+import net.sumppen.whatsapi4j.WhatsApi;
+import net.sumppen.whatsapi4j.WhatsAppException;
 import net.sumppen.whatsapi4j.message.Message;
 import net.sumppen.whatsapi4j.message.TextMessage;
-public class ExampleMessageProcessor implements MessageProcessor {
+@Service
+public class IncomingMessageProcessor implements MessageProcessor {
 
+	@Autowired
+	private JmsTemplate jmsTemplate;
+	
+	@Autowired
+	private Queue queue;
+	
+	@Autowired
+	private WhatsApi whatsApi;
+	
 	public void processMessage(ProtocolNode message) {
 		String from = message.getAttribute("from");
 		if(message.getAttribute("type").equals("text")) {
@@ -33,7 +54,7 @@ public class ExampleMessageProcessor implements MessageProcessor {
 				//Group message
 				System.out.println(participant+"("+from+") ::: "+hex);
 			} else {
-				//Private message
+				queueMsg(new WaQueueMessage(from, hex));
 				System.out.println(from+" ::: "+hex);
 			}
 		}
@@ -65,6 +86,49 @@ public class ExampleMessageProcessor implements MessageProcessor {
 		}
 	}
 
+	private void queueMsg(final WaQueueMessage queueMessage) {
+		/*try {
+            // Create a ConnectionFactory
+            ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("vm://activemq-waclient.rhcloud.com");
+
+            // Create a Connection
+            Connection connection = connectionFactory.createConnection();
+            connection.start();
+
+            // Create a Session
+            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+
+            // Create the destination (Topic or Queue)
+            Destination destination = session.createQueue("TEST.FOO");
+
+            // Create a MessageProducer from the Session to the Topic or Queue
+            MessageProducer producer = session.createProducer(destination);
+            producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+
+            ObjectMessage message = session.createObjectMessage(queueMessage);
+
+            // Tell the producer to send the message
+            System.out.println("Sent queue: "+ queueMessage.toString());
+            producer.send(message);
+
+            // Clean up
+            session.close();
+            connection.close();
+        }
+        catch (Exception e) {
+            System.out.println("Caught: " + e);
+            e.printStackTrace();
+        }*/
+		this.jmsTemplate.send(queue,new MessageCreator() {
+
+			public ObjectMessage createMessage(Session session) throws JMSException {
+				ObjectMessage message = session.createObjectMessage(queueMessage);
+		        return message;
+			}
+
+	    });
+	}
+
 	private void writePreview(String pathname, byte[] preview) {
 		Path path = Paths.get(pathname);
 		try {
@@ -76,6 +140,7 @@ public class ExampleMessageProcessor implements MessageProcessor {
 	}
 
 	public void processMessage(Message message) {
+
 		//TODO add all supported message types
 		switch(message.getType()) {
 		case TEXT:
@@ -85,6 +150,12 @@ public class ExampleMessageProcessor implements MessageProcessor {
 				System.out.println(msg.getDate()+" :: "+msg.getFrom()+"("+msg.getGroupId()+"): "+msg.getText());
 			} else {
 				//Private message
+				//queueMsg(new WaQueueMessage(msg.getFrom(), msg.getText()));
+				try {
+					whatsApi.sendMessage(msg.getFrom(), msg.getText());
+				} catch (WhatsAppException e) {
+					e.printStackTrace();
+				}
 				System.out.println(msg.getDate()+" :: "+msg.getFrom()+" : "+msg.getText());
 			}
 			break;

@@ -119,7 +119,9 @@ public class ProtocolNode {
             sb.append('\n');
         }
         sb.append(lt + "/" + tag + gt);
-        return sb.toString();
+        String str = sb.toString();
+//        System.out.println(str);
+		return str;
     }
 
     /**

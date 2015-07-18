@@ -4,7 +4,7 @@ import java.net.SocketTimeoutException;
 
 import net.sumppen.whatsapi4j.WhatsApi;
 
-class ExampleMessagePoller extends Thread {
+public class ExampleMessagePoller extends Thread {
 	private boolean running = true;
 	private final WhatsApi wa;
 

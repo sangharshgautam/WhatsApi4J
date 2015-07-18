@@ -4,6 +4,8 @@ import java.io.Console;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,32 +32,23 @@ public class ExampleApplication {
 
 	public static boolean running = true;
 	
-	public static void main(String[] args) {
+	public static void main(String[] arg) throws UnsupportedEncodingException {
 		boolean loggedIn = false;
 		String filename = "exampleapplication.log";
 		System.setProperty("org.slf4j.simpleLogger.logFile", filename);
 		System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
 		System.setProperty("org.slf4j.simpleLogger.showDateTime", "true");
-		if(args.length != 4) {
-			System.out.println("Usage: ExampleApplication <username> <password> <id> <nick>");
-			System.exit(1);
-		}
 		Console cons = System.console();
 		if(cons == null) {
 			System.out.println("No console found. Aborting");
 			System.exit(1);
 		}
 
-		String username = args[0];
-		String password = args[1];
-		if(password.length() == 0) {
-			password = null;
-		}
-		String identity = args[2];
-		if(identity.length() == 0) {
-			identity = null;
-		}
-		String nickname = args[3];
+		String username = "919958674455";
+		String password = "DtxDKz+/hCfY2V/B1IHJ2034ydQ=";
+		String identity = ExampleApplication.decodeIdentity("%C3%AD%094%C3%B6%C2%A7a%C2%897WX%21%C2%BD%0D%5E%C3%8F%C3%88%C2%98%3C%C2%BB%2B");
+		String nickname = "sangharsh";
+		
 		WhatsApi wa = null;
 		try {
 			wa = new WhatsApi(username, identity, nickname);
@@ -73,8 +66,8 @@ public class ExampleApplication {
 				loggedIn = true;
 			}
 			String cmd;
-//			ExampleMessagePoller poller = new ExampleMessagePoller(wa);
-//			poller.start();
+			ExampleMessagePoller poller = new ExampleMessagePoller(wa);
+			poller.start();
 			System.out.print("$ ");
 			while(running && (cmd=cons.readLine()) != null) {
 				try {
@@ -262,5 +255,7 @@ public class ExampleApplication {
 		JSONObject res = wa.sendMessageVideo(to, video,preview,message);
 		System.out.println(res);
 	}
-
+	public static String decodeIdentity(String encodedIdentity) throws UnsupportedEncodingException{
+		return URLDecoder.decode(encodedIdentity, StandardCharsets.UTF_8.toString());
+	}
 }
